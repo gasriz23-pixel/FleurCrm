@@ -33,11 +33,17 @@ export class ProviderRegistry{
     const regionInputs=regions.map(region=>({...expanded,region,city:undefined}));
     const inputs=[...cityInputs,...regionInputs];
     if(!inputs.length) inputs.push(expanded);
-    const results=await Promise.allSettled(
-      inputs.flatMap(location=>this.providers.map(async p=>
-        (await p.search(location)).map(x=>({...x,provider:x.provider??p.name,providers:x.providers??[x.provider??p.name]}))
-      ))
-    );
-    return results.flatMap(r=>r.status==="fulfilled"?r.value:[]);
+    const tasks=inputs.flatMap(location=>this.providers.map(p=>({location,p})));
+    const results:LeadCandidate[][]=[];
+    const concurrency=Math.max(1,Math.min(3,Number(filters.providerConcurrency??3)));
+    let cursor=0;
+    const run=async()=>{ while(cursor<tasks.length){ const i=cursor++; const {location,p}=tasks[i];
+      try{
+        const leads=await p.search(location);
+        results[i]=leads.map(x=>({...x,provider:x.provider??p.name,providers:x.providers??[x.provider??p.name]}));
+      }catch{ results[i]=[]; }
+    }};
+    await Promise.all(Array.from({length:Math.min(concurrency,tasks.length)},()=>run()));
+    return results.flat();
   }
 }
