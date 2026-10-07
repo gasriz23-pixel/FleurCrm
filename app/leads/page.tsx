@@ -14,6 +14,7 @@ type Job = {
 
 export default function LeadsPage() {
   const [city, setCity] = useState("");
+  const [cities, setCities] = useState("");
   const [province, setProvince] = useState("");
   const [region, setRegion] = useState("");
   const [cap, setCap] = useState("");
