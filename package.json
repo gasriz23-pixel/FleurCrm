@@ -1,7 +1,27 @@
 {
   "name":"fleurcrm",
   "private":true,
-  "scripts":{"dev":"next dev","build":"next build","start":"next start","worker:dev":"tsx apps/worker/src/index.ts","db:generate":"prisma generate","db:migrate":"prisma migrate dev","db:push":"prisma db push","db:studio":"prisma studio","lint":"next lint","test":"vitest run"},
-  "dependencies":{"@prisma/client":"latest","bullmq":"latest","cheerio":"latest","ioredis":"latest","next":"latest","playwright":"latest","react":"latest","react-dom":"latest","zod":"latest"},
-  "devDependencies":{"@types/node":"latest","@types/react":"latest","@types/react-dom":"latest","prisma":"latest","tsx":"latest","typescript":"latest","vitest":"latest"}
+  "scripts":{
+    "dev":"next dev",
+    "build":"next build",
+    "start":"next start",
+    "worker:dev":"tsx apps/worker/src/index.ts",
+    "db:generate":"prisma generate",
+    "db:migrate":"prisma migrate dev",
+    "db:migrate:deploy":"prisma migrate deploy",
+    "db:migrate:status":"prisma migrate status",
+    "db:push":"prisma db push",
+    "db:studio":"prisma studio",
+    "lint":"next lint",
+    "test":"vitest run",
+    "typecheck":"tsc --noEmit"
+  },
+  "dependencies":{
+    "@prisma/client":"latest","bullmq":"latest","cheerio":"latest","ioredis":"latest",
+    "next":"latest","playwright":"latest","react":"latest","react-dom":"latest","zod":"latest"
+  },
+  "devDependencies":{
+    "@types/node":"latest","@types/react":"latest","@types/react-dom":"latest",
+    "prisma":"latest","tsx":"latest","typescript":"latest","vitest":"latest"
+  }
 }
