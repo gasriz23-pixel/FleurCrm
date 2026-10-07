@@ -67,7 +67,7 @@ export default function CompaniesPage() {
             <tbody>
               {loading ? <tr><td className="p-6" colSpan={6}>Caricamento...</td></tr> : items.map(c=>(
                 <tr key={c.id} className="border-b last:border-0">
-                  <td className="p-4"><div className="font-semibold">{c.name}</div><div className="text-xs text-slate-500">{c.website || "Sito mancante"}</div></td>
+                  <td className="p-4"><a href={"/companies/" + c.id} className="font-semibold hover:underline">{c.name}</a><div className="text-xs text-slate-500">{c.website || "Sito mancante"}</div></td>
                   <td className="p-4">{c.category || "—"}</td>
                   <td className="p-4">{[c.city,c.province].filter(Boolean).join(" · ") || "—"}</td>
                   <td className="p-4"><div>{c.phone || "Telefono —"}</div><div>{c.email || "Email —"}</div></td>
