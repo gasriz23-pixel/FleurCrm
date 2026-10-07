@@ -1,0 +1,131 @@
+generator client { provider = "prisma-client-js" }
+datasource db { provider = "postgresql"; url = env("DATABASE_URL") }
+
+enum UserRole { ADMIN COMMERCIAL BACKOFFICE }
+enum LeadStatus { NEW CONTACTED QUALIFIED OPPORTUNITY WON LOST }
+enum TaskStatus { TODO IN_PROGRESS DONE CANCELLED }
+enum Priority { LOW MEDIUM HIGH URGENT }
+enum SearchJobStatus { QUEUED RUNNING COMPLETED FAILED CANCELLED }
+
+model User {
+  id String @id @default(cuid())
+  name String
+  email String @unique
+  role UserRole @default(COMMERCIAL)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  assignedTasks Task[] @relation("TaskAssignee")
+  createdTasks Task[] @relation("TaskCreator")
+  auditLogs AuditLog[]
+}
+
+model Company {
+  id String @id @default(cuid())
+  name String
+  category String?
+  address String?
+  city String?
+  province String?
+  region String?
+  cap String?
+  website String?
+  phone String?
+  email String?
+  status LeadStatus @default(NEW)
+  rating Float?
+  reviewCount Int?
+  roomsOrSeats Int?
+  decisionMakerName String?
+  decisionMakerRole String?
+  linkedinUrl String?
+  confidence Float @default(0)
+  lastVerifiedAt DateTime?
+  sourceUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  contacts Contact[]
+  tasks Task[]
+  sources LeadSource[]
+  @@index([city])
+  @@index([province])
+  @@index([category])
+  @@index([status])
+}
+
+model Contact {
+  id String @id @default(cuid())
+  companyId String
+  company Company @relation(fields:[companyId], references:[id], onDelete: Cascade)
+  name String?
+  role String?
+  email String?
+  phone String?
+  linkedinUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([companyId])
+}
+
+model LeadSource {
+  id String @id @default(cuid())
+  companyId String
+  company Company @relation(fields:[companyId], references:[id], onDelete: Cascade)
+  provider String
+  url String?
+  verifiedAt DateTime?
+  rawConfidence Float @default(0)
+  createdAt DateTime @default(now())
+  @@index([companyId])
+}
+
+model Task {
+  id String @id @default(cuid())
+  title String
+  description String?
+  status TaskStatus @default(TODO)
+  priority Priority @default(MEDIUM)
+  dueAt DateTime?
+  assigneeId String?
+  assignee User? @relation("TaskAssignee", fields:[assigneeId], references:[id])
+  creatorId String?
+  creator User? @relation("TaskCreator", fields:[creatorId], references:[id])
+  companyId String?
+  company Company? @relation(fields:[companyId], references:[id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([assigneeId,status])
+  @@index([dueAt])
+}
+
+model SearchJob {
+  id String @id @default(cuid())
+  status SearchJobStatus @default(QUEUED)
+  query String
+  city String?
+  province String?
+  region String?
+  cap String?
+  radiusKm Float?
+  categories Json
+  filters Json?
+  progress Int @default(0)
+  totalFound Int @default(0)
+  error String?
+  startedAt DateTime?
+  completedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([status,createdAt])
+}
+
+model AuditLog {
+  id String @id @default(cuid())
+  userId String?
+  user User? @relation(fields:[userId], references:[id], onDelete: SetNull)
+  entityType String
+  entityId String
+  action String
+  payload Json?
+  createdAt DateTime @default(now())
+  @@index([entityType,entityId])
+}
