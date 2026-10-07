@@ -6,7 +6,7 @@ const endpoints=[
   "https://overpass.private.coffee/api/interpreter",
 ];
 
-const NORTH_IT_BBOX={south:44.0,west:6.6,north:47.2,east:14.0};
+const NORTH_IT_BBOX={south:43.5,west:6.4,north:47.2,east:14.0};
 
 const categoryTags:Record<string,string[]>={
   Hotel:['["tourism"="hotel"]'],
