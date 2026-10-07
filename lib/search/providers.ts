@@ -28,8 +28,11 @@ export class ProviderRegistry{
     const expanded={...input,categories:expandCategories(input.categories,input.query)};
     const filters=expanded.filters??{};
     const cities=Array.isArray(filters.cities)?filters.cities.map(String).map(x=>x.trim()).filter(Boolean):[];
-    const locations=[...new Set([...(cities.length?cities:[]),...(expanded.city?[expanded.city]:[])])];
-    const inputs=locations.length?locations.map(city=>({...expanded,city})): [expanded];
+    const regions=Array.isArray(filters.regions)?filters.regions.map(String).map(x=>x.trim()).filter(Boolean):[];
+    const cityInputs=cities.map(city=>({...expanded,city}));
+    const regionInputs=regions.map(region=>({...expanded,region,city:undefined}));
+    const inputs=[...cityInputs,...regionInputs];
+    if(!inputs.length) inputs.push(expanded);
     const results=await Promise.allSettled(
       inputs.flatMap(location=>this.providers.map(async p=>
         (await p.search(location)).map(x=>({...x,provider:x.provider??p.name,providers:x.providers??[x.provider??p.name]}))
