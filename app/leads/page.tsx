@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 const categories = ["Hotel", "Ristorante", "Pizzeria", "B&B", "Affittacamere", "Studentato", "Motel"];
+const northRegions = ["Piemonte", "Valle d'Aosta", "Liguria", "Lombardia", "Trentino-Alto Adige", "Veneto", "Friuli-Venezia Giulia", "Emilia-Romagna"];
 
 type Job = {
   id: string;
@@ -22,6 +23,7 @@ export default function LeadsPage() {
   const [category, setCategory] = useState("Hotel");
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(false);
+  const [northItaly, setNorthItaly] = useState(false);
   const [locationSuggestions, setLocationSuggestions] = useState<Array<{label:string;city?:string;province?:string;region?:string;cap?:string}>>([]);
 
   useEffect(() => {
@@ -58,7 +60,7 @@ export default function LeadsPage() {
         body: JSON.stringify({
           query: city || province || region || cap || category,
           city: city || undefined,
-          filters: { cities: cities.split(",").map(x => x.trim()).filter(Boolean) },
+          filters: { cities: cities.split(",").map(x => x.trim()).filter(Boolean), regions: northItaly ? northRegions : [] },
           province: province || undefined,
           region: region || undefined,
           cap: cap || undefined,
@@ -91,6 +93,7 @@ export default function LeadsPage() {
           <label className="text-sm">Provincia<input value={province} onChange={e=>setProvince(e.target.value)} className="mt-1 w-full rounded-lg border p-2" placeholder="es. MO"/></label>
           <label className="text-sm">Regione<input value={region} onChange={e=>setRegion(e.target.value)} className="mt-1 w-full rounded-lg border p-2" placeholder="es. Emilia-Romagna"/></label>
           <label className="text-sm">CAP<input value={cap} onChange={e=>setCap(e.target.value)} className="mt-1 w-full rounded-lg border p-2" placeholder="es. 41121"/></label>
+          <label className="flex items-center gap-2 text-sm md:col-span-2"><input type="checkbox" checked={northItaly} onChange={e=>setNorthItaly(e.target.checked)}/><span>Ricerca massiva Nord Italia</span></label>
           <label className="text-sm">Categoria<select value={category} onChange={e=>setCategory(e.target.value)} className="mt-1 w-full rounded-lg border p-2">{categories.map(c=><option key={c}>{c}</option>)}</select></label>
           <label className="text-sm">Raggio km<input value={radius} onChange={e=>setRadius(e.target.value)} type="number" min="1" max="250" className="mt-1 w-full rounded-lg border p-2"/></label>
           <button disabled={loading || !!active} onClick={startSearch} className="rounded-lg bg-slate-900 px-4 py-2 font-semibold text-white disabled:opacity-50 md:col-span-3">
