@@ -45,6 +45,7 @@ export default function LeadsPage() {
         body: JSON.stringify({
           query: city || province || region || cap || category,
           city: city || undefined,
+          filters: { cities: cities.split(",").map(x => x.trim()).filter(Boolean) },
           province: province || undefined,
           region: region || undefined,
           cap: cap || undefined,
