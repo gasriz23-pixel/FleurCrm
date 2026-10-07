@@ -22,6 +22,19 @@ export default function LeadsPage() {
   const [category, setCategory] = useState("Hotel");
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(false);
+  const [locationSuggestions, setLocationSuggestions] = useState<Array<{label:string;city?:string;province?:string;region?:string;cap?:string}>>([]);
+
+  useEffect(() => {
+    const value = city.trim();
+    if (value.length < 2) { setLocationSuggestions([]); return; }
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch("/api/search/locations?q=" + encodeURIComponent(value), { cache: "no-store" });
+        if (response.ok) setLocationSuggestions((await response.json()).results ?? []);
+      } catch {}
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [city]);
 
   useEffect(() => {
     if (!job || !["QUEUED", "RUNNING"].includes(job.status)) return;
@@ -74,7 +87,7 @@ export default function LeadsPage() {
         <p className="mt-2 text-slate-500">Le ricerche sono persistenti lato server e proseguono anche se cambi pagina.</p>
 
         <section className="mt-8 grid gap-4 rounded-2xl border bg-white p-6 md:grid-cols-3">
-          <label className="text-sm">Città<input value={city} onChange={e=>setCity(e.target.value)} className="mt-1 w-full rounded-lg border p-2" placeholder="es. Modena"/></label>
+          <label className="relative text-sm">Città<input value={city} onChange={e=>setCity(e.target.value)} className="mt-1 w-full rounded-lg border p-2" placeholder="es. Modena"/>{locationSuggestions.length>0 && <div className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-lg border bg-white shadow">{locationSuggestions.map((item,i)=><button type="button" key={item.label+i} onClick={()=>{setCity(item.city??"");setProvince(item.province??"");setRegion(item.region??"");setCap(item.cap??"");setLocationSuggestions([])}} className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-100">{item.label}</button>)}</div>}</label>
           <label className="text-sm">Provincia<input value={province} onChange={e=>setProvince(e.target.value)} className="mt-1 w-full rounded-lg border p-2" placeholder="es. MO"/></label>
           <label className="text-sm">Regione<input value={region} onChange={e=>setRegion(e.target.value)} className="mt-1 w-full rounded-lg border p-2" placeholder="es. Emilia-Romagna"/></label>
           <label className="text-sm">CAP<input value={cap} onChange={e=>setCap(e.target.value)} className="mt-1 w-full rounded-lg border p-2" placeholder="es. 41121"/></label>
