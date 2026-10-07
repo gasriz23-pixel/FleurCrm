@@ -1,0 +1,1 @@
+import type {LeadCandidate} from "./providers";const norm=(s?:string)=>s?.toLowerCase().replace(/[^a-z0-9]/g,"")||"";export function dedupeLeads(leads:LeadCandidate[]){const map=new Map<string,LeadCandidate>();for(const lead of leads){const key=norm(lead.website)||norm(lead.name)+"|"+norm(lead.address);if(!map.has(key))map.set(key,lead)}return [...map.values()]}
