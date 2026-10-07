@@ -2,20 +2,34 @@ import {Worker} from "bullmq";
 import IORedis from "ioredis";
 import {db} from "../../../lib/db";
 import {providerRegistry} from "../../../lib/search/registry";
-import {dedupeLeads} from "../../../lib/search/dedupe";
+import {dedupeLeads, normalizeWebsite} from "../../../lib/search/dedupe";
 import {enrichWebsite} from "../../../lib/enrichment/site";
 
 const connection=new IORedis(process.env.REDIS_URL??"redis://localhost:6379",{maxRetriesPerRequest:null});
 
-function normalize(value?:string|null){return(value??"").trim().toLowerCase().replace(/\s+/g," ");}
-function normalizeWebsite(value?:string|null){
-  if(!value)return "";
-  try{const u=new URL(value.startsWith("http")?value:"https://"+value);return u.hostname.replace(/^www\./,"").toLowerCase()+u.pathname.replace(/\/$/,"").toLowerCase();}
-  catch{return normalize(value).replace(/^https?:\/\//,"").replace(/^www\./,"").replace(/\/$/,"");}
+function normalize(value?:string|null){
+  return(value??"").normalize("NFKD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase().replace(/\s+/g," ");
 }
 function identityKey(lead:{name:string;address?:string;city?:string;website?:string}){
   const website=normalizeWebsite(lead.website);
-  return website?"web:"+website:"name:"+normalize(lead.name)+"|address:"+normalize(lead.address)+"|city:"+normalize(lead.city);
+  return website
+    ?"web:"+website
+    :"name:"+normalize(lead.name)+"|address:"+normalize(lead.address)+"|city:"+normalize(lead.city);
+}
+function confidenceFor(lead:{email?:string;phone?:string;website?:string}){
+  let score=0.4;
+  if(lead.website)score+=0.15;
+  if(lead.phone)score+=0.2;
+  if(lead.email)score+=0.25;
+  return Math.min(1,score);
+}
+function sourceEntries(lead:{sourceUrls?:string[];sourceUrl?:string;providers?:string[];provider?:string}){
+  const urls=[...(lead.sourceUrls??[]),...(lead.sourceUrl?[lead.sourceUrl]:[])].filter(Boolean);
+  const providers=[...(lead.providers??[]),...(lead.provider?[lead.provider]:[])].filter(Boolean);
+  return [...new Set(urls)].map((url,index)=>({
+    url,
+    provider:providers[index]??providers[0]??"unknown"
+  }));
 }
 
 new Worker("lead-search",async(job)=>{
@@ -28,33 +42,76 @@ new Worker("lead-search",async(job)=>{
       cap:s.cap??undefined,radiusKm:s.radiusKm??undefined,
       categories:Array.isArray(s.categories)?s.categories.map(String):[],filters:s.filters??{}
     });
-    await db.searchJob.update({where:{id:s.id},data:{progress:65,totalFound:candidates.length}});
+    await db.searchJob.update({where:{id:s.id},data:{progress:55,totalFound:candidates.length}});
     const leads=dedupeLeads(candidates);
+    await db.searchJob.update({where:{id:s.id},data:{progress:70,totalFound:leads.length}});
     let inserted=0;
     for(const lead of leads){
-      if(!lead.name)continue;
-      const key=identityKey(lead),website=normalizeWebsite(lead.website);
-      const existing=await db.company.findUnique({where:{identityKey:key}});
+      if(!lead.name?.trim())continue;
+      const key=identityKey(lead);
+      const website=normalizeWebsite(lead.website);
+      const existing=await db.company.findFirst({
+        where:{
+          OR:[
+            {identityKey:key},
+            ...(website?[{normalizedWebsite:website}]:[])
+          ]
+        }
+      });
+      const confidence=confidenceFor(lead);
+      const sources=sourceEntries(lead);
+
       if(existing){
         await db.$transaction(async tx=>{
+          const nextIdentityKey=existing.identityKey===key?existing.identityKey:key;
           await tx.company.update({where:{id:existing.id},data:{
-            website:existing.website??lead.website,normalizedWebsite:existing.normalizedWebsite??(website||null),
-            phone:existing.phone??lead.phone,email:existing.email??lead.email,address:existing.address??lead.address,
-            city:existing.city??lead.city,province:existing.province??lead.province,region:existing.region??lead.region,
-            cap:existing.cap??lead.cap,rating:existing.rating??lead.rating,reviewCount:existing.reviewCount??lead.reviewCount,
-            lastVerifiedAt:new Date(),confidence:Math.max(existing.confidence,lead.email&&lead.phone?0.8:0.5),deletedAt:null
+            identityKey:nextIdentityKey,
+            website:existing.website??lead.website,
+            normalizedWebsite:existing.normalizedWebsite??(website||null),
+            phone:existing.phone??lead.phone,
+            email:existing.email??lead.email,
+            address:existing.address??lead.address,
+            city:existing.city??lead.city,
+            province:existing.province??lead.province,
+            region:existing.region??lead.region,
+            cap:existing.cap??lead.cap,
+            category:existing.category??lead.category,
+            rating:existing.rating??lead.rating,
+            reviewCount:existing.reviewCount??lead.reviewCount,
+            roomsOrSeats:existing.roomsOrSeats??lead.roomsOrSeats,
+            decisionMakerName:existing.decisionMakerName??lead.decisionMakerName,
+            decisionMakerRole:existing.decisionMakerRole??lead.decisionMakerRole,
+            linkedinUrl:existing.linkedinUrl??lead.linkedinUrl,
+            lastVerifiedAt:new Date(),
+            confidence:Math.max(existing.confidence,confidence),
+            deletedAt:null
           }});
-          if(lead.sourceUrl)await tx.leadSource.create({data:{companyId:existing.id,provider:lead.provider??"unknown",url:lead.sourceUrl,verifiedAt:new Date(),rawConfidence:lead.email&&lead.phone?0.8:0.5}});
+          for(const source of sources){
+            await tx.leadSource.create({data:{
+              companyId:existing.id,provider:source.provider,url:source.url,
+              verifiedAt:new Date(),rawConfidence:confidence
+            }});
+          }
         });
         continue;
       }
+
       const created=await db.company.create({data:{
-        name:lead.name,normalizedName:normalize(lead.name),identityKey:key,category:lead.category,address:lead.address,
-        city:lead.city,province:lead.province,region:lead.region,cap:lead.cap,website:lead.website,
-        normalizedWebsite:website||null,phone:lead.phone,email:lead.email,rating:lead.rating,reviewCount:lead.reviewCount,
-        sourceUrl:lead.sourceUrl,lastVerifiedAt:new Date(),confidence:lead.email&&lead.phone?0.8:0.5
+        name:lead.name.trim(),normalizedName:normalize(lead.name),identityKey:key,
+        category:lead.category,address:lead.address,city:lead.city,province:lead.province,
+        region:lead.region,cap:lead.cap,website:lead.website,
+        normalizedWebsite:website||null,phone:lead.phone,email:lead.email,
+        rating:lead.rating,reviewCount:lead.reviewCount,roomsOrSeats:lead.roomsOrSeats,
+        decisionMakerName:lead.decisionMakerName,decisionMakerRole:lead.decisionMakerRole,
+        linkedinUrl:lead.linkedinUrl,sourceUrl:lead.sourceUrl,
+        lastVerifiedAt:new Date(),confidence
       }});
-      if(lead.sourceUrl)await db.leadSource.create({data:{companyId:created.id,provider:lead.provider??"unknown",url:lead.sourceUrl,verifiedAt:new Date(),rawConfidence:lead.email&&lead.phone?0.8:0.5}});
+      for(const source of sources){
+        await db.leadSource.create({data:{
+          companyId:created.id,provider:source.provider,url:source.url,
+          verifiedAt:new Date(),rawConfidence:confidence
+        }});
+      }
       inserted++;
     }
     await db.searchJob.update({where:{id:s.id},data:{status:"COMPLETED",progress:100,totalFound:inserted,completedAt:new Date()}});
@@ -79,7 +136,9 @@ new Worker("lead-enrichment",async(job)=>{
         decisionMakerRole:j.company.decisionMakerRole??result.decisionMakerRole,
         confidence:Math.max(j.company.confidence,result.confidence),lastVerifiedAt:new Date()
       }});
-      for(const url of result.sourceUrls)await tx.leadSource.create({data:{companyId:j.companyId,provider:"website-enrichment",url,verifiedAt:new Date(),rawConfidence:result.confidence}});
+      for(const url of result.sourceUrls)await tx.leadSource.create({data:{
+        companyId:j.companyId,provider:"website-enrichment",url,verifiedAt:new Date(),rawConfidence:result.confidence
+      }});
       await tx.auditLog.create({data:{entityType:"Company",entityId:j.companyId,action:"ENRICHED",payload:result}});
     });
     await db.enrichmentJob.update({where:{id:j.id},data:{
