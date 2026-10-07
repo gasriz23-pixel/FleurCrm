@@ -47,7 +47,7 @@ new Worker("lead-search",async(job)=>{
     const minCapacity=Number((s.filters as any)?.minCapacity ?? 0);
     const filteredCandidates=candidates.filter(lead =>
       (!minRating || (lead.rating != null && lead.rating >= minRating)) &&
-      (!minCapacity || (lead.roomsOrSeats != null && lead.roomsOrSeats >= minCapacity))
+      (!minCapacity || lead.roomsOrSeats == null || lead.roomsOrSeats >= minCapacity)
     );
     const leads=dedupeLeads(filteredCandidates);
     await db.searchJob.update({where:{id:s.id},data:{progress:70,totalFound:leads.length}});
