@@ -4,21 +4,19 @@ import { db } from "../../../lib/db";
 import { providerRegistry } from "../../../lib/search/registry";
 import { dedupeLeads } from "../../../lib/search/dedupe";
 
-const connection = new IORedis(process.env.REDIS_URL ?? "redis://localhost:6379", {
-  maxRetriesPerRequest: null,
-});
+const connection = new IORedis(process.env.REDIS_URL ?? "redis://localhost:6379", { maxRetriesPerRequest: null });
 
 function normalize(value?: string | null) {
-  return (value ?? "").trim().toLowerCase().replace(/\\s+/g, " ");
+  return (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
 function normalizeWebsite(value?: string | null) {
   if (!value) return "";
   try {
     const url = new URL(value.startsWith("http") ? value : "https://" + value);
-    return url.hostname.replace(/^www\\./, "").toLowerCase() + url.pathname.replace(/\\/$/, "").toLowerCase();
+    return url.hostname.replace(/^www\./, "").toLowerCase() + url.pathname.replace(/\/$/, "").toLowerCase();
   } catch {
-    return normalize(value).replace(/^https?:\\/\\//, "").replace(/^www\\./, "").replace(/\\/$/, "");
+    return normalize(value).replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/$/, "");
   }
 }
 
@@ -66,7 +64,7 @@ new Worker(
             where: { id: existing.id },
             data: {
               website: existing.website ?? lead.website,
-              normalizedWebsite: existing.normalizedWebsite ?? website || null,
+              normalizedWebsite: existing.normalizedWebsite ?? (website || null),
               phone: existing.phone ?? lead.phone,
               email: existing.email ?? lead.email,
               address: existing.address ?? lead.address,
@@ -113,11 +111,7 @@ new Worker(
     } catch (e) {
       await db.searchJob.update({
         where: { id: s.id },
-        data: {
-          status: "FAILED",
-          error: e instanceof Error ? e.message : "Unknown error",
-          completedAt: new Date(),
-        },
+        data: { status: "FAILED", error: e instanceof Error ? e.message : "Unknown error", completedAt: new Date() },
       });
       throw e;
     }
