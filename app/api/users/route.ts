@@ -3,7 +3,7 @@ import { db } from "../../../lib/db";
 import { requireArea } from "../../../lib/permissions";
 
 export async function GET() {
-  try { await requireArea("USERS"); } catch (e) {
+  try { await requireArea("TASKS"); } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "FORBIDDEN" }, { status: 403 });
   }
   const users = await db.user.findMany({
