@@ -1,0 +1,3 @@
+export type LeadCandidate={name:string;category?:string;address?:string;city?:string;website?:string;phone?:string;email?:string;sourceUrl?:string};
+export interface LeadProvider{name:string;search(input:{query:string;city?:string;radiusKm?:number}):Promise<LeadCandidate[]>}
+export class ProviderRegistry{constructor(private providers:LeadProvider[]){}async searchAll(input:{query:string;city?:string;radiusKm?:number}){const results=await Promise.allSettled(this.providers.map(p=>p.search(input)));return results.flatMap(r=>r.status==="fulfilled"?r.value:[]);}}
