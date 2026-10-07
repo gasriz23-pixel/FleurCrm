@@ -14,7 +14,8 @@
     "db:studio":"prisma studio",
     "lint":"next lint",
     "test":"vitest run",
-    "typecheck":"tsc --noEmit"
+    "typecheck":"tsc --noEmit",
+    "auth:sync-roles":"tsx scripts/sync-user-roles.ts"
   },
   "dependencies":{
     "@prisma/client":"latest","bullmq":"latest","cheerio":"latest","ioredis":"latest",
