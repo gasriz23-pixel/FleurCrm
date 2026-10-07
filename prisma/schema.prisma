@@ -2,10 +2,13 @@ generator client { provider = "prisma-client-js" }
 datasource db { provider = "postgresql"; url = env("DATABASE_URL") }
 
 enum UserRole { ADMIN COMMERCIAL BACKOFFICE }
+
+// ADMIN e COMMERCIAL sono operatori full-access; BACKOFFICE è limitato alle funzioni operative.
 enum LeadStatus { NEW CONTACTED QUALIFIED OPPORTUNITY WON LOST }
 enum TaskStatus { TODO IN_PROGRESS DONE CANCELLED }
 enum Priority { LOW MEDIUM HIGH URGENT }
 enum SearchJobStatus { QUEUED RUNNING COMPLETED FAILED CANCELLED }
+enum EnrichmentJobStatus { QUEUED RUNNING COMPLETED FAILED CANCELLED }
 
 model User {
   id String @id @default(cuid())
@@ -13,6 +16,7 @@ model User {
   email String @unique
   role UserRole @default(COMMERCIAL)
   createdAt DateTime @default(now())
+  passwordHash String?
   updatedAt DateTime @updatedAt
   assignedTasks Task[] @relation("TaskAssignee")
   createdTasks Task[] @relation("TaskCreator")
@@ -22,6 +26,8 @@ model User {
 model Company {
   id String @id @default(cuid())
   name String
+  normalizedName String
+  identityKey String @unique
   category String?
   address String?
   city String?
@@ -29,6 +35,7 @@ model Company {
   region String?
   cap String?
   website String?
+  normalizedWebsite String?
   phone String?
   email String?
   status LeadStatus @default(NEW)
@@ -41,15 +48,22 @@ model Company {
   confidence Float @default(0)
   lastVerifiedAt DateTime?
   sourceUrl String?
+  deletedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   contacts Contact[]
   tasks Task[]
   sources LeadSource[]
+  enrichmentJobs EnrichmentJob[]
   @@index([city])
   @@index([province])
+  @@index([region])
+  @@index([cap])
   @@index([category])
   @@index([status])
+  @@index([normalizedWebsite])
+  @@index([normalizedName, city])
+  @@index([deletedAt])
 }
 
 model Contact {
@@ -64,6 +78,7 @@ model Contact {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@index([companyId])
+  @@index([email])
 }
 
 model LeadSource {
@@ -76,6 +91,7 @@ model LeadSource {
   rawConfidence Float @default(0)
   createdAt DateTime @default(now())
   @@index([companyId])
+  @@index([provider])
 }
 
 model Task {
@@ -95,6 +111,7 @@ model Task {
   updatedAt DateTime @updatedAt
   @@index([assigneeId,status])
   @@index([dueAt])
+  @@index([companyId,status])
 }
 
 model SearchJob {
@@ -118,6 +135,23 @@ model SearchJob {
   @@index([status,createdAt])
 }
 
+model EnrichmentJob {
+  id String @id @default(cuid())
+  companyId String
+  company Company @relation(fields:[companyId], references:[id], onDelete: Cascade)
+  status EnrichmentJobStatus @default(QUEUED)
+  progress Int @default(0)
+  pagesVisited Int @default(0)
+  fieldsFound Int @default(0)
+  error String?
+  startedAt DateTime?
+  completedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([companyId,createdAt])
+  @@index([status,createdAt])
+}
+
 model AuditLog {
   id String @id @default(cuid())
   userId String?
@@ -128,4 +162,5 @@ model AuditLog {
   payload Json?
   createdAt DateTime @default(now())
   @@index([entityType,entityId])
+  @@index([userId,createdAt])
 }
