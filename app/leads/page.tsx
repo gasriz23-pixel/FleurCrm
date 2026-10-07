@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 const categories = ["Hotel", "Ristorante", "Pizzeria", "B&B", "Affittacamere", "Studentato", "Motel"];
-const northRegions = ["Piemonte", "Valle d'Aosta", "Liguria", "Lombardia", "Trentino-Alto Adige", "Veneto", "Friuli-Venezia Giulia", "Emilia-Romagna"];
+const northRegions = ["Piemonte", "Valle d'Aosta", "Liguria", "Lombardia", "Trentino-Alto Adige", "Veneto", "Friuli-Venezia Giulia", "Emilia-Romagna", "Toscana"];
 
 type Job = {
   id: string;
