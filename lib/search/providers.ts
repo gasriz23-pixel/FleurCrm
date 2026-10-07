@@ -26,9 +26,15 @@ export class ProviderRegistry{
   constructor(private providers:LeadProvider[]){}
   async searchAll(input:LeadSearchInput){
     const expanded={...input,categories:expandCategories(input.categories,input.query)};
-    const results=await Promise.allSettled(this.providers.map(async p=>
-      (await p.search(expanded)).map(x=>({...x,provider:x.provider??p.name,providers:x.providers??[x.provider??p.name]}))
-    ));
+    const filters=expanded.filters??{};
+    const cities=Array.isArray(filters.cities)?filters.cities.map(String).map(x=>x.trim()).filter(Boolean):[];
+    const locations=[...new Set([...(cities.length?cities:[]),...(expanded.city?[expanded.city]:[])])];
+    const inputs=locations.length?locations.map(city=>({...expanded,city})): [expanded];
+    const results=await Promise.allSettled(
+      inputs.flatMap(location=>this.providers.map(async p=>
+        (await p.search(location)).map(x=>({...x,provider:x.provider??p.name,providers:x.providers??[x.provider??p.name]}))
+      ))
+    );
     return results.flatMap(r=>r.status==="fulfilled"?r.value:[]);
   }
 }
