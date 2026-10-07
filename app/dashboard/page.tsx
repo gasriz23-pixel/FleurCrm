@@ -45,6 +45,10 @@ export default async function Dashboard() {
 
       <div className="mt-8 grid gap-4 md:grid-cols-3">
         {!isBackofficeOnly && <>
+          {user.role === "ADMIN" && <a href="/admin/users" className="rounded-xl border bg-white p-6 shadow-sm hover:border-slate-400">
+            <h2 className="font-semibold">Utenti e ruoli</h2>
+            <p className="mt-2 text-sm text-slate-500">Gestisci utenti, ruoli e reset password.</p>
+          </a>}
           <a href="/companies" className="rounded-xl border bg-white p-6 shadow-sm hover:border-slate-400">
             <h2 className="font-semibold">CRM Lead</h2>
             <p className="mt-2 text-sm text-slate-500">Cerca, filtra e gestisci le aziende acquisite.</p>
