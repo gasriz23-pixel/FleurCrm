@@ -22,6 +22,8 @@ model User {
 model Company {
   id String @id @default(cuid())
   name String
+  normalizedName String
+  identityKey String @unique
   category String?
   address String?
   city String?
@@ -29,6 +31,7 @@ model Company {
   region String?
   cap String?
   website String?
+  normalizedWebsite String?
   phone String?
   email String?
   status LeadStatus @default(NEW)
@@ -41,6 +44,7 @@ model Company {
   confidence Float @default(0)
   lastVerifiedAt DateTime?
   sourceUrl String?
+  deletedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   contacts Contact[]
@@ -48,8 +52,13 @@ model Company {
   sources LeadSource[]
   @@index([city])
   @@index([province])
+  @@index([region])
+  @@index([cap])
   @@index([category])
   @@index([status])
+  @@index([normalizedWebsite])
+  @@index([normalizedName, city])
+  @@index([deletedAt])
 }
 
 model Contact {
@@ -64,6 +73,7 @@ model Contact {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@index([companyId])
+  @@index([email])
 }
 
 model LeadSource {
@@ -76,6 +86,7 @@ model LeadSource {
   rawConfidence Float @default(0)
   createdAt DateTime @default(now())
   @@index([companyId])
+  @@index([provider])
 }
 
 model Task {
@@ -95,6 +106,7 @@ model Task {
   updatedAt DateTime @updatedAt
   @@index([assigneeId,status])
   @@index([dueAt])
+  @@index([companyId,status])
 }
 
 model SearchJob {
@@ -128,4 +140,5 @@ model AuditLog {
   payload Json?
   createdAt DateTime @default(now())
   @@index([entityType,entityId])
+  @@index([userId,createdAt])
 }
