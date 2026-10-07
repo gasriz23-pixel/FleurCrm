@@ -43,7 +43,13 @@ new Worker("lead-search",async(job)=>{
       categories:Array.isArray(s.categories)?s.categories.map(String):[],filters:s.filters??{}
     });
     await db.searchJob.update({where:{id:s.id},data:{progress:55,totalFound:candidates.length}});
-    const leads=dedupeLeads(candidates);
+    const minRating=Number((s.filters as any)?.minRating ?? 0);
+    const minCapacity=Number((s.filters as any)?.minCapacity ?? 0);
+    const filteredCandidates=candidates.filter(lead =>
+      (!minRating || (lead.rating != null && lead.rating >= minRating)) &&
+      (!minCapacity || (lead.roomsOrSeats != null && lead.roomsOrSeats >= minCapacity))
+    );
+    const leads=dedupeLeads(filteredCandidates);
     await db.searchJob.update({where:{id:s.id},data:{progress:70,totalFound:leads.length}});
     let inserted=0;
     for(const lead of leads){
