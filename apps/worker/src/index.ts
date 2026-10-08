@@ -54,9 +54,11 @@ async function persistSearchLeads(leads: Awaited<ReturnType<typeof providerRegis
         linkedinUrl:existing.linkedinUrl??lead.linkedinUrl,lastVerifiedAt:new Date(),
         confidence:Math.max(existing.confidence,confidence),deletedAt:null
       }});
-      for(const source of sources){
-        const duplicate=await db.leadSource.findFirst({where:{companyId:existing.id,url:source.url,provider:source.provider}});
-        if(!duplicate)await db.leadSource.create({data:{companyId:existing.id,provider:source.provider,url:source.url,verifiedAt:new Date(),rawConfidence:confidence}});
+      if(sources.length){
+        await db.leadSource.createMany({
+          data:sources.map(source=>({companyId:existing.id,provider:source.provider,url:source.url,verifiedAt:new Date(),rawConfidence:confidence})),
+          skipDuplicates:true
+        });
       }
       continue;
     }
@@ -70,7 +72,12 @@ async function persistSearchLeads(leads: Awaited<ReturnType<typeof providerRegis
         decisionMakerName:lead.decisionMakerName,decisionMakerRole:lead.decisionMakerRole,
         linkedinUrl:lead.linkedinUrl,sourceUrl:lead.sourceUrl,lastVerifiedAt:new Date(),confidence
       }});
-      for(const source of sources)await db.leadSource.create({data:{companyId:created.id,provider:source.provider,url:source.url,verifiedAt:new Date(),rawConfidence:confidence}});
+      if(sources.length){
+        await db.leadSource.createMany({
+          data:sources.map(source=>({companyId:created.id,provider:source.provider,url:source.url,verifiedAt:new Date(),rawConfidence:confidence})),
+          skipDuplicates:true
+        });
+      }
     }catch(error){
       if((error as {code?:string})?.code!=="P2002")throw error;
       const raced=await db.company.findUnique({where:{identityKey:key}});
@@ -86,9 +93,11 @@ async function persistSearchLeads(leads: Awaited<ReturnType<typeof providerRegis
         linkedinUrl:raced.linkedinUrl??lead.linkedinUrl,lastVerifiedAt:new Date(),
         confidence:Math.max(raced.confidence,confidence),deletedAt:null
       }});
-      for(const source of sources){
-        const duplicate=await db.leadSource.findFirst({where:{companyId:raced.id,url:source.url,provider:source.provider}});
-        if(!duplicate)await db.leadSource.create({data:{companyId:raced.id,provider:source.provider,url:source.url,verifiedAt:new Date(),rawConfidence:confidence}});
+      if(sources.length){
+        await db.leadSource.createMany({
+          data:sources.map(source=>({companyId:raced.id,provider:source.provider,url:source.url,verifiedAt:new Date(),rawConfidence:confidence})),
+          skipDuplicates:true
+        });
       }
     }
   }
@@ -197,9 +206,14 @@ new Worker("lead-enrichment",async(job)=>{
           await tx.contact.create({data:{companyId:j.companyId,name:contact.name,role:contact.role,email:contact.email,phone:contact.phone,linkedinUrl:contact.linkedinUrl}});
         }
       }
-      for(const url of result.sourceUrls)await tx.leadSource.create({data:{
-        companyId:j.companyId,provider:"website-enrichment",url,verifiedAt:new Date(),rawConfidence:result.confidence
-      }});
+      if(result.sourceUrls.length){
+        await tx.leadSource.createMany({
+          data:result.sourceUrls.map(url=>({
+            companyId:j.companyId,provider:"website-enrichment",url,verifiedAt:new Date(),rawConfidence:result.confidence
+          })),
+          skipDuplicates:true
+        });
+      }
       await tx.auditLog.create({data:{entityType:"Company",entityId:j.companyId,action:"ENRICHED",payload:result}});
     });
     await db.enrichmentJob.update({where:{id:j.id},data:{
