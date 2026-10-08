@@ -32,6 +32,7 @@ export default function Tasks() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [now] = useState(() => Date.now());
 
   async function load() {
     setLoading(true);
@@ -199,14 +200,14 @@ export default function Tasks() {
 
           {loading && <div className="p-8 text-center text-slate-500">Caricamento…</div>}
           {!loading && visibleTasks.map((task) => (
-            <div key={task.id} className={"grid gap-3 border-b p-5 last:border-0 md:grid-cols-7 " + (task.dueAt && new Date(task.dueAt).getTime() < Date.now() && task.status !== "DONE" && task.status !== "CANCELLED" ? "bg-amber-50/60" : "")}>
+            <div key={task.id} className={"grid gap-3 border-b p-5 last:border-0 md:grid-cols-7 " + (task.dueAt && new Date(task.dueAt).getTime() < now && task.status !== "DONE" && task.status !== "CANCELLED" ? "bg-amber-50/60" : "")}>
               <div className="md:col-span-2">
                 <div className="font-medium">{task.title}</div>
                 {task.description && <div className="mt-1 text-sm text-slate-600">{task.description}</div>}
                 <div className="mt-2 text-xs text-slate-500">
                   {task.company?.name || "Nessun lead collegato"}
                   {task.dueAt ? " · Scadenza " + new Date(task.dueAt).toLocaleString("it-IT") : ""}
-                  {task.dueAt && new Date(task.dueAt).getTime() < Date.now() && task.status !== "DONE" && task.status !== "CANCELLED" && <span className="ml-2 font-semibold text-amber-700">SCADUTA</span>}
+                  {task.dueAt && new Date(task.dueAt).getTime() < now && task.status !== "DONE" && task.status !== "CANCELLED" && <span className="ml-2 font-semibold text-amber-700">SCADUTA</span>}
                   {task.recurrenceRule && <span className="ml-2 font-medium text-slate-600">↻ {task.recurrenceRule === "DAILY" ? "Giornaliera" : task.recurrenceRule === "WEEKLY" ? "Settimanale" : "Mensile"}{task.nextRunAt ? " · Prossima " + new Date(task.nextRunAt).toLocaleString("it-IT") : ""}</span>}
                 </div>
               </div>
