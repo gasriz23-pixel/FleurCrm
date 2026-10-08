@@ -14,7 +14,12 @@ export async function POST(_: Request, {params}: {params: {id: string}}) {
   }
 
   const job = await db.searchJob.findUnique({where: {id: params.id}});
+
   if (!job) return NextResponse.json({error: "not found"}, {status: 404});
+
+  if (job.status === "RUNNING") {
+    return NextResponse.json({error: "La ricerca è ancora in esecuzione"}, {status: 409});
+  }
 
   const failed = await db.searchJobChunk.findMany({
     where: {searchJobId: params.id, status: "FAILED"},
