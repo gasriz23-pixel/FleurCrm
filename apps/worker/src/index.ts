@@ -121,19 +121,23 @@ new Worker("lead-search",async(job)=>{
       municipalities:municipalityScopes,
       fallback:{name:s.city??s.province??s.region??s.cap??"default",province:s.province??undefined,region:s.region??undefined,cap:s.cap??undefined},
     });
-    const existing=await db.searchJobChunk.findMany({where:{searchJobId:s.id},orderBy:{sequence:"asc"}});
-    if(!existing.length && scopes.length){
-      await db.searchJobChunk.createMany({
-        data:scopes.map((scope,sequence)=>({searchJobId:s.id,sequence,location:scope.name})),
-        skipDuplicates:true
-      });
+    const existingCount=await db.searchJobChunk.count({where:{searchJobId:s.id}});
+    if(!existingCount && scopes.length){
+      const chunkSize=500;
+      for(let offset=0;offset<scopes.length;offset+=chunkSize){
+        const batch=scopes.slice(offset,offset+chunkSize);
+        await db.searchJobChunk.createMany({
+          data:batch.map((scope,index)=>({searchJobId:s.id,sequence:offset+index,location:scope.name})),
+          skipDuplicates:true
+        });
+      }
     }
     await db.searchJob.update({where:{id:s.id},data:{status:"RUNNING",startedAt:s.startedAt??new Date(),progress:1,error:null}});
-    const chunks=await db.searchJobChunk.findMany({where:{searchJobId:s.id},orderBy:{sequence:"asc"}});
+    const chunkCount=await db.searchJobChunk.count({where:{searchJobId:s.id}});
     const concurrency=Math.max(1,Math.min(8,Number(f.searchConcurrency??4)));
-    let cursor=0;
-    const processChunk=async()=>{ while(cursor<chunks.length){ const index=cursor++; const chunk=chunks[index];
-      if(chunk.status==="COMPLETED")continue;
+    const pageSize=100;
+    const processChunk=async(chunk:{id:string;sequence:number;status:string})=>{
+      if(chunk.status==="COMPLETED")return;
       const scope=scopes[chunk.sequence];
       if(!scope)continue;
       const location=scope.name;
@@ -164,7 +168,7 @@ new Worker("lead-search",async(job)=>{
         const completed=stats.find(x=>x.status==="COMPLETED");
         const done=completed?._count._all??0;
         const totalFound=stats.reduce((sum,row)=>sum+(row._sum.found??0),0);
-        await db.searchJob.update({where:{id:s.id},data:{progress:Math.min(99,Math.round(done/scopes.length*100)),totalFound}});
+        await db.searchJob.update({where:{id:s.id},data:{progress:Math.min(99,Math.round(done/chunkCount*100)),totalFound}});
       }catch(error){
         await db.searchJobChunk.update({where:{id:chunk.id},data:{status:"FAILED",error:error instanceof Error?error.message:"Unknown error",completedAt:new Date()}});
         throw error;
@@ -173,9 +177,6 @@ new Worker("lead-search",async(job)=>{
     const results=await Promise.allSettled(
       Array.from({length:Math.min(concurrency,chunks.length)},()=>processChunk())
     );
-    const failures=results
-      .filter((result):result is PromiseRejectedResult=>result.status==="rejected")
-      .map(result=>result.reason);
     const failedChunks=await db.searchJobChunk.count({where:{searchJobId:s.id,status:"FAILED"}});
     if(failedChunks>0||failures.length>0){
       const message=failures[0] instanceof Error
