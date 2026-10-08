@@ -8,6 +8,7 @@ import {loadItalianMunicipalities} from "../../../lib/search/istat-municipalitie
 import {buildSearchScopes} from "../../../lib/search/scopes";
 import {emailQueue} from "../../../lib/queue";
 import {renderTemplate,sendEmail} from "../../../lib/email/provider";
+import {createRecipientToken,createUnsubscribeToken} from "../../../lib/marketing/tokens";
 
 const connection=new IORedis(process.env.REDIS_URL??"redis://localhost:6379",{maxRetriesPerRequest:null});
 
@@ -295,9 +296,11 @@ new Worker("email-campaign",async(job)=>{
     };
     const subject=renderTemplate(recipient.campaign.subject,vars);
     let html=renderTemplate(recipient.campaign.htmlBody,vars);
-    const unsubscribeUrl=baseUrl+"/api/marketing/unsubscribe?email="+encodeURIComponent(recipient.email);
-    const trackingUrl=baseUrl+"/api/marketing/track/open/"+recipient.id;
-    html=html.replace(/href=["'](https?:\/\/[^"']+)["']/gi,(_,href:string)=>'href="'+baseUrl+"/api/marketing/track/click/"+recipient.id+"?url="+encodeURIComponent(href)+'"');
+    const recipientToken=createRecipientToken(recipient.id);
+    const unsubscribeToken=createUnsubscribeToken(recipient.email);
+    const unsubscribeUrl=baseUrl+"/api/marketing/unsubscribe?token="+encodeURIComponent(unsubscribeToken);
+    const trackingUrl=baseUrl+"/api/marketing/track/open/"+recipientToken;
+    html=html.replace(/href=["'](https?:\/\/[^"']+)["']/gi,(_,href:string)=>'href="'+baseUrl+"/api/marketing/track/click/"+recipientToken+"?url="+encodeURIComponent(href)+'"');
     html += '<p style="font-size:12px"><a href="'+unsubscribeUrl+'">Disiscriviti</a></p><img src="'+trackingUrl+'" width="1" height="1" alt="" />';
     const result=await sendEmail({to:recipient.email,subject,html,text:recipient.campaign.textBody?renderTemplate(recipient.campaign.textBody,vars):undefined});
     await db.campaignRecipient.update({where:{id:recipient.id},data:{status:"SENT",providerMessageId:result.id??null,sentAt:new Date(),error:null}});
