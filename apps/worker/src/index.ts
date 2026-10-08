@@ -338,7 +338,7 @@ void emailQueue.waitUntilReady();
     await db.$transaction(async tx=>{
       const existing=await tx.task.findFirst({where:{title:task.title,creatorId:task.creatorId,recurrenceRule:task.recurrenceRule,nextRunAt:next}});
       if(!existing) await tx.task.create({data:{title:task.title,description:task.description,status:"TODO",priority:task.priority,dueAt:next,recurrenceRule:task.recurrenceRule,nextRunAt:next,assigneeId:task.assigneeId,creatorId:task.creatorId,companyId:task.companyId}});
-      await tx.task.update({where:{id:task.id},data:{nextRunAt:next}});
+      await tx.task.update({where:{id:task.id},data:{nextRunAt:null}});
     });
   }
 },{connection,concurrency:1,limiter:{max:1,duration:60000}});
