@@ -36,6 +36,7 @@ export async function POST(req:Request){
   const emails=companies.filter(x=>x.email).map(x=>x.email!.trim().toLowerCase());
   const blocked=new Set((await db.emailUnsubscribe.findMany({where:{email:{in:emails}},select:{email:true}})).map(x=>x.email));
   const eligible=companies.filter(x=>x.email&&!blocked.has(x.email.trim().toLowerCase()));
+  if(!eligible.length)return NextResponse.json({error:"NO_ELIGIBLE_RECIPIENTS"},{status:400});
   const when=scheduledAt?new Date(scheduledAt):null;
   const campaign=await db.$transaction(async tx=>{
     const created=await tx.campaign.create({data:{name,subject,htmlBody,textBody:textBody||null,status:when&&when.getTime()>Date.now()?"SCHEDULED":"SENDING",scheduledAt:when,createdById:user.id}});
