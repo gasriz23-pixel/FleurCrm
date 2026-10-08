@@ -107,7 +107,12 @@ new Worker("lead-search",async(job)=>{
     const locations=cities.length?cities:(allItaly?municipalityScopes.map(x=>x.name):regions);
     const scopes=locations.length?locations:[s.city??s.province??s.region??s.cap??"default"];
     const existing=await db.searchJobChunk.findMany({where:{searchJobId:s.id},orderBy:{sequence:"asc"}});
-    if(!existing.length)for(let i=0;i<scopes.length;i++)await db.searchJobChunk.create({data:{searchJobId:s.id,sequence:i,location:scopes[i]}});
+    if(!existing.length && scopes.length){
+      await db.searchJobChunk.createMany({
+        data:scopes.map((location,sequence)=>({searchJobId:s.id,sequence,location})),
+        skipDuplicates:true
+      });
+    }
     await db.searchJob.update({where:{id:s.id},data:{status:"RUNNING",startedAt:s.startedAt??new Date(),progress:1,error:null}});
     const chunks=await db.searchJobChunk.findMany({where:{searchJobId:s.id},orderBy:{sequence:"asc"}});
     const concurrency=Math.max(1,Math.min(8,Number(f.searchConcurrency??4)));
