@@ -139,7 +139,7 @@ new Worker("lead-search",async(job)=>{
     const processChunk=async(chunk:{id:string;sequence:number;status:string})=>{
       if(chunk.status==="COMPLETED")return;
       const scope=scopes[chunk.sequence];
-      if(!scope)continue;
+      if(!scope)return;
       const location=scope.name;
       const isCityScope=scope.kind==="city"||(scope.kind==="fallback"&&Boolean(s.city));
       const isRegionScope=scope.kind==="region"||(scope.kind==="fallback"&&!s.city&&Boolean(s.region));
@@ -173,10 +173,31 @@ new Worker("lead-search",async(job)=>{
         await db.searchJobChunk.update({where:{id:chunk.id},data:{status:"FAILED",error:error instanceof Error?error.message:"Unknown error",completedAt:new Date()}});
         throw error;
       }
-    }};
-    const results=await Promise.allSettled(
-      Array.from({length:Math.min(concurrency,chunks.length)},()=>processChunk())
-    );
+    };
+
+    const failures:unknown[]=[];
+    for(let offset=0;offset<chunkCount;offset+=pageSize){
+      const chunks=await db.searchJobChunk.findMany({
+        where:{searchJobId:s.id},
+        orderBy:{sequence:"asc"},
+        skip:offset,
+        take:pageSize,
+        select:{id:true,sequence:true,status:true},
+      });
+      let cursor=0;
+      const runBatch=async()=>{
+        while(cursor<chunks.length){
+          const index=cursor++;
+          try{
+            await processChunk(chunks[index]);
+          }catch(error){
+            failures.push(error);
+          }
+        }
+      };
+      await Promise.all(Array.from({length:Math.min(concurrency,chunks.length)},()=>runBatch()));
+    }
+
     const failedChunks=await db.searchJobChunk.count({where:{searchJobId:s.id,status:"FAILED"}});
     if(failedChunks>0||failures.length>0){
       const message=failures[0] instanceof Error
