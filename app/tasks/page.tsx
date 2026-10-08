@@ -121,7 +121,7 @@ export default function Tasks() {
   );
 
   return (
-    <main className="min-h-screen bg-slate-100 p-4 text-slate-900 md:p-8">
+    <main className="min-h-screen bg-[#f6f7f9] p-4 text-slate-900 md:p-8">
       <div className="mx-auto max-w-6xl">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -131,13 +131,13 @@ export default function Tasks() {
           </div>
           <button
             onClick={() => void load()}
-            className="rounded-lg border bg-white px-4 py-2 text-sm font-semibold hover:bg-slate-50"
+            className="rounded-xl border-slate-200 bg-white px-4 py-3 text-sm font-semibold shadow-sm transition hover:bg-slate-50"
           >
             Aggiorna
           </button>
         </div>
 
-        <section className="mt-8 rounded-2xl border bg-white p-5 shadow-sm">
+        <section className="mt-8 rounded-2xl border border-slate-200 bg-white shadow-sm p-5 shadow-sm">
           <div className="mb-4">
             <h2 className="font-semibold">Nuova attività</h2>
             <p className="mt-1 text-sm text-slate-500">Assegna una scadenza e una priorità per rendere il lavoro operativo tracciabile.</p>
@@ -148,23 +148,23 @@ export default function Tasks() {
               onChange={(e) => setTitle(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") void createTask(); }}
               placeholder="Titolo attività"
-              className="rounded-lg border p-2 md:col-span-2"
+              className="rounded-xl border-slate-200 bg-white p-3 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 md:col-span-2"
             />
             <input
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Nota / descrizione"
-              className="rounded-lg border p-2 md:col-span-2"
+              className="rounded-xl border-slate-200 bg-white p-3 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 md:col-span-2"
             />
-            <select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} className="rounded-lg border p-2">
+            <select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} className="rounded-xl border-slate-200 bg-white p-3 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50">
               <option value="">Non assegnata</option>
               {users.map((user) => <option key={user.id} value={user.id}>{user.name} · {user.role}</option>)}
             </select>
-            <select value={priority} onChange={(e) => setPriority(e.target.value)} className="rounded-lg border p-2">
+            <select value={priority} onChange={(e) => setPriority(e.target.value)} className="rounded-xl border-slate-200 bg-white p-3 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50">
               {priorities.map((value) => <option key={value}>{value}</option>)}
             </select>
-            <input type="datetime-local" value={dueAt} onChange={(e) => setDueAt(e.target.value)} className="rounded-lg border p-2 md:col-span-2" />
-            <select value={recurrenceRule} onChange={(e) => setRecurrenceRule(e.target.value)} disabled={!dueAt} className="rounded-lg border p-2 disabled:cursor-not-allowed disabled:bg-slate-100">
+            <input type="datetime-local" value={dueAt} onChange={(e) => setDueAt(e.target.value)} className="rounded-xl border-slate-200 bg-white p-3 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 md:col-span-2" />
+            <select value={recurrenceRule} onChange={(e) => setRecurrenceRule(e.target.value)} disabled={!dueAt} className="rounded-xl border-slate-200 bg-white p-3 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 disabled:cursor-not-allowed disabled:bg-slate-100">
               <option value="">Nessuna ricorrenza</option>
               <option value="DAILY">Ogni giorno</option>
               <option value="WEEKLY">Ogni settimana</option>
@@ -173,7 +173,7 @@ export default function Tasks() {
             <button
               onClick={() => void createTask()}
               disabled={!title.trim() || saving}
-              className="rounded-lg bg-slate-900 px-4 py-2 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 md:col-span-4"
+              className="rounded-xl bg-slate-950 px-4 py-3 font-semibold text-white shadow-sm hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed disabled:opacity-50 md:col-span-4"
             >
               {saving ? "Salvataggio…" : "Crea attività"}
             </button>
@@ -181,14 +181,14 @@ export default function Tasks() {
           {error && <p className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
         </section>
 
-        <section className="mt-6 rounded-2xl border bg-white shadow-sm">
-          <div className="flex flex-col gap-3 border-b p-5 sm:flex-row sm:items-center sm:justify-between">
+        <section className="mt-6 rounded-2xl border border-slate-200 bg-white shadow-sm shadow-sm">
+          <div className="flex flex-col gap-3 border-b border-slate-200 p-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="font-semibold">Elenco attività</h2>
               <div className="text-xs text-slate-500">Le attività scadute restano evidenziate come promemoria operativo.</div>
               <p className="text-sm text-slate-500">{visibleTasks.length} attività visualizzate</p>
             </div>
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="rounded-lg border p-2 text-sm">
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="rounded-xl border-slate-200 bg-white p-3 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 text-sm">
               <option value="OPEN">Aperte</option>
               <option value="ALL">Tutte</option>
               <option value="TODO">Da fare</option>
@@ -200,7 +200,7 @@ export default function Tasks() {
 
           {loading && <div className="p-8 text-center text-slate-500">Caricamento…</div>}
           {!loading && visibleTasks.map((task) => (
-            <div key={task.id} className={"grid gap-3 border-b p-5 last:border-0 md:grid-cols-7 " + (task.dueAt && new Date(task.dueAt).getTime() < now && task.status !== "DONE" && task.status !== "CANCELLED" ? "bg-amber-50/60" : "")}>
+            <div key={task.id} className={"grid gap-3 border-b border-slate-200 p-5 last:border-0 md:grid-cols-7 " + (task.dueAt && new Date(task.dueAt).getTime() < now && task.status !== "DONE" && task.status !== "CANCELLED" ? "bg-amber-50/60" : "")}>
               <div className="md:col-span-2">
                 <div className="font-medium">{task.title}</div>
                 {task.description && <div className="mt-1 text-sm text-slate-600">{task.description}</div>}
@@ -214,7 +214,7 @@ export default function Tasks() {
               <select
                 value={task.assignee?.id || ""}
                 onChange={(e) => void update(task.id, { assigneeId: e.target.value || null })}
-                className="rounded border p-2"
+                className="rounded-xl border-slate-200 bg-white p-2.5 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50"
                 aria-label={"Assegnatario di " + task.title}
               >
                 <option value="">Non assegnata</option>
@@ -223,7 +223,7 @@ export default function Tasks() {
               <select
                 value={task.priority}
                 onChange={(e) => void update(task.id, { priority: e.target.value })}
-                className="rounded border p-2"
+                className="rounded-xl border-slate-200 bg-white p-2.5 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50"
                 aria-label={"Priorità di " + task.title}
               >
                 {priorities.map((value) => <option key={value}>{value}</option>)}
@@ -231,7 +231,7 @@ export default function Tasks() {
               <select
                 value={task.status}
                 onChange={(e) => void update(task.id, { status: e.target.value })}
-                className="rounded border p-2"
+                className="rounded-xl border-slate-200 bg-white p-2.5 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50"
                 aria-label={"Stato di " + task.title}
               >
                 {statuses.map((value) => <option key={value}>{value}</option>)}
@@ -239,7 +239,7 @@ export default function Tasks() {
               <select
                 value={task.recurrenceRule || ""}
                 onChange={(e) => void update(task.id, { recurrenceRule: e.target.value || null })}
-                className="rounded border p-2"
+                className="rounded-xl border-slate-200 bg-white p-2.5 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50"
                 aria-label={"Ricorrenza di " + task.title}
               >
                 <option value="">Una tantum</option>
