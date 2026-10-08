@@ -113,12 +113,16 @@ new Worker("lead-search",async(job)=>{
     const regions=Array.isArray(f.regions)?f.regions.map(String).map(x=>x.trim()).filter(Boolean):[];
     const allItaly=Boolean(f.allItaly)||regions.length>=20;
     const municipalityScopes=allItaly?await loadItalianMunicipalities():[];
-    const locations=cities.length?cities:(allItaly?municipalityScopes.map(x=>x.name):regions);
-    const scopes=locations.length?locations:[s.city??s.province??s.region??s.cap??"default"];
+    const locationScopes=allItaly
+      ? municipalityScopes.map(scope=>({name:scope.name,province:scope.province,region:scope.region,cap:scope.cap}))
+      : cities.map(name=>({name})).concat(regions.map(name=>({name})));
+    const scopes=locationScopes.length
+      ? locationScopes
+      : [{name:s.city??s.province??s.region??s.cap??"default",province:s.province??undefined,region:s.region??undefined,cap:s.cap??undefined}];
     const existing=await db.searchJobChunk.findMany({where:{searchJobId:s.id},orderBy:{sequence:"asc"}});
     if(!existing.length && scopes.length){
       await db.searchJobChunk.createMany({
-        data:scopes.map((location,sequence)=>({searchJobId:s.id,sequence,location})),
+        data:scopes.map((scope,sequence)=>({searchJobId:s.id,sequence,location:scope.name})),
         skipDuplicates:true
       });
     }
@@ -128,14 +132,20 @@ new Worker("lead-search",async(job)=>{
     let cursor=0;
     const processChunk=async()=>{ while(cursor<chunks.length){ const index=cursor++; const chunk=chunks[index];
       if(chunk.status==="COMPLETED")continue;
-      const location=scopes[chunk.sequence];
-      if(!location)continue;
+      const scope=scopes[chunk.sequence];
+      if(!scope)continue;
+      const location=scope.name;
+      const isMunicipalitySearch=allItaly||cities.length>0||(Boolean(s.city)&&regions.length===0);
+      const isRegionSearch=regions.length>0&&!allItaly&&!cities.length;
       await db.searchJobChunk.update({where:{id:chunk.id},data:{status:"RUNNING",progress:5,attempts:{increment:1},startedAt:new Date(),error:null,completedAt:null}});
       try{
         const candidates=await providerRegistry.searchAll({
-          query:s.query,city:cities.length?location:undefined,
-          province:cities.length?undefined:s.province??undefined,
-          region:regions.length?location:s.region??undefined,cap:s.cap??undefined,radiusKm:s.radiusKm??undefined,
+          query:s.query,
+          city:isMunicipalitySearch?location:undefined,
+          province:isMunicipalitySearch?(scope.province??undefined):s.province??undefined,
+          region:isRegionSearch?location:(isMunicipalitySearch?(scope.region??undefined):s.region??undefined),
+          cap:isMunicipalitySearch?(scope.cap??s.cap??undefined):s.cap??undefined,
+          radiusKm:s.radiusKm??undefined,
           categories:Array.isArray(s.categories)?s.categories.map(String):[],
           filters:{...f,cities:[],regions:[],providerConcurrency:f.providerConcurrency??3}
         });
