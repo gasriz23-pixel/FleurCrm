@@ -32,102 +32,90 @@ function sourceEntries(lead:{sourceUrls?:string[];sourceUrl?:string;providers?:s
   }));
 }
 
+async function persistSearchLeads(leads: Awaited<ReturnType<typeof providerRegistry.searchAll>>){
+  const unique=dedupeLeads(leads);
+  for(const lead of unique){
+    if(!lead.name?.trim())continue;
+    const key=identityKey(lead);
+    const website=normalizeWebsite(lead.website);
+    const existing=await db.company.findFirst({where:{OR:[{identityKey:key},...(website?[{normalizedWebsite:website}]:[])]}});
+    const confidence=confidenceFor(lead);
+    const sources=sourceEntries(lead);
+    if(existing){
+      await db.company.update({where:{id:existing.id},data:{
+        website:existing.website??lead.website,normalizedWebsite:existing.normalizedWebsite??(website||null),
+        phone:existing.phone??lead.phone,email:existing.email??lead.email,address:existing.address??lead.address,
+        city:existing.city??lead.city,province:existing.province??lead.province,region:existing.region??lead.region,
+        cap:existing.cap??lead.cap,category:existing.category??lead.category,rating:existing.rating??lead.rating,
+        reviewCount:existing.reviewCount??lead.reviewCount,roomsOrSeats:existing.roomsOrSeats??lead.roomsOrSeats,
+        decisionMakerName:existing.decisionMakerName??lead.decisionMakerName,
+        decisionMakerRole:existing.decisionMakerRole??lead.decisionMakerRole,
+        linkedinUrl:existing.linkedinUrl??lead.linkedinUrl,lastVerifiedAt:new Date(),
+        confidence:Math.max(existing.confidence,confidence),deletedAt:null
+      }});
+      for(const source of sources){
+        const duplicate=await db.leadSource.findFirst({where:{companyId:existing.id,url:source.url,provider:source.provider}});
+        if(!duplicate)await db.leadSource.create({data:{companyId:existing.id,provider:source.provider,url:source.url,verifiedAt:new Date(),rawConfidence:confidence}});
+      }
+      continue;
+    }
+    const created=await db.company.create({data:{
+      name:lead.name.trim(),normalizedName:normalize(lead.name),identityKey:key,category:lead.category,
+      address:lead.address,city:lead.city,province:lead.province,region:lead.region,cap:lead.cap,
+      website:lead.website,normalizedWebsite:website||null,phone:lead.phone,email:lead.email,
+      rating:lead.rating,reviewCount:lead.reviewCount,roomsOrSeats:lead.roomsOrSeats,
+      decisionMakerName:lead.decisionMakerName,decisionMakerRole:lead.decisionMakerRole,
+      linkedinUrl:lead.linkedinUrl,sourceUrl:lead.sourceUrl,lastVerifiedAt:new Date(),confidence
+    }});
+    for(const source of sources)await db.leadSource.create({data:{companyId:created.id,provider:source.provider,url:source.url,verifiedAt:new Date(),rawConfidence:confidence}});
+  }
+  return unique.length;
+}
+
 new Worker("lead-search",async(job)=>{
   const s=await db.searchJob.findUnique({where:{id:job.data.searchJobId}});
   if(!s)return;
   try{
-    await db.searchJob.update({where:{id:s.id},data:{status:"RUNNING",startedAt:new Date(),progress:5,error:null}});
-    await db.searchJob.update({where:{id:s.id},data:{progress:10}});
-    const candidates=await providerRegistry.searchAll({
-      query:s.query,city:s.city??undefined,province:s.province??undefined,region:s.region??undefined,
-      cap:s.cap??undefined,radiusKm:s.radiusKm??undefined,
-      categories:Array.isArray(s.categories)?s.categories.map(String):[],filters:s.filters??{}
-    });
-    await db.searchJob.update({where:{id:s.id},data:{progress:55,totalFound:candidates.length}});
-    const minRating=Number((s.filters as any)?.minRating ?? 0);
-    const minCapacity=Number((s.filters as any)?.minCapacity ?? 0);
-    const filteredCandidates=candidates.filter(lead =>
-      (!minRating || (lead.rating != null && lead.rating >= minRating)) &&
-      (!minCapacity || lead.roomsOrSeats == null || lead.roomsOrSeats >= minCapacity)
-    );
-    const leads=dedupeLeads(filteredCandidates);
-    await db.searchJob.update({where:{id:s.id},data:{progress:70,totalFound:leads.length}});
-    let inserted=0;
-    for(const lead of leads){
-      if(!lead.name?.trim())continue;
-      const key=identityKey(lead);
-      const website=normalizeWebsite(lead.website);
-      const existing=await db.company.findFirst({
-        where:{
-          OR:[
-            {identityKey:key},
-            ...(website?[{normalizedWebsite:website}]:[])
-          ]
-        }
-      });
-      const confidence=confidenceFor(lead);
-      const sources=sourceEntries(lead);
-
-      if(existing){
-        await db.$transaction(async tx=>{
-          const nextIdentityKey=existing.identityKey;
-          await tx.company.update({where:{id:existing.id},data:{
-            identityKey:nextIdentityKey,
-            website:existing.website??lead.website,
-            normalizedWebsite:existing.normalizedWebsite??(website||null),
-            phone:existing.phone??lead.phone,
-            email:existing.email??lead.email,
-            address:existing.address??lead.address,
-            city:existing.city??lead.city,
-            province:existing.province??lead.province,
-            region:existing.region??lead.region,
-            cap:existing.cap??lead.cap,
-            category:existing.category??lead.category,
-            rating:existing.rating??lead.rating,
-            reviewCount:existing.reviewCount??lead.reviewCount,
-            roomsOrSeats:existing.roomsOrSeats??lead.roomsOrSeats,
-            decisionMakerName:existing.decisionMakerName??lead.decisionMakerName,
-            decisionMakerRole:existing.decisionMakerRole??lead.decisionMakerRole,
-            linkedinUrl:existing.linkedinUrl??lead.linkedinUrl,
-            lastVerifiedAt:new Date(),
-            confidence:Math.max(existing.confidence,confidence),
-            deletedAt:null
-          }});
-          for(const source of sources){
-            await tx.leadSource.create({data:{
-              companyId:existing.id,provider:source.provider,url:source.url,
-              verifiedAt:new Date(),rawConfidence:confidence
-            }});
-          }
+    const f=(s.filters&&typeof s.filters==="object"?s.filters:{}) as Record<string,unknown>;
+    const cities=Array.isArray(f.cities)?f.cities.map(String).map(x=>x.trim()).filter(Boolean):[];
+    const regions=Array.isArray(f.regions)?f.regions.map(String).map(x=>x.trim()).filter(Boolean):[];
+    const locations=cities.length?cities:regions;
+    const scopes=locations.length?locations:[s.city??s.province??s.region??s.cap??"default"];
+    const existing=await db.searchJobChunk.findMany({where:{searchJobId:s.id},orderBy:{sequence:"asc"}});
+    if(!existing.length)for(let i=0;i<scopes.length;i++)await db.searchJobChunk.create({data:{searchJobId:s.id,sequence:i,location:scopes[i]}});
+    await db.searchJob.update({where:{id:s.id},data:{status:"RUNNING",startedAt:s.startedAt??new Date(),progress:1,error:null}});
+    const chunks=await db.searchJobChunk.findMany({where:{searchJobId:s.id},orderBy:{sequence:"asc"}});
+    for(const chunk of chunks){
+      if(chunk.status==="COMPLETED")continue;
+      const location=scopes[chunk.sequence];
+      if(!location)continue;
+      await db.searchJobChunk.update({where:{id:chunk.id},data:{status:"RUNNING",progress:5,attempts:{increment:1},startedAt:new Date(),error:null}});
+      try{
+        const candidates=await providerRegistry.searchAll({
+          query:s.query,city:cities.length?location:undefined,
+          province:cities.length?undefined:s.province??undefined,
+          region:regions.length?location:s.region??undefined,cap:s.cap??undefined,radiusKm:s.radiusKm??undefined,
+          categories:Array.isArray(s.categories)?s.categories.map(String):[],
+          filters:{...f,cities:[],regions:[],providerConcurrency:f.providerConcurrency??3}
         });
-        continue;
+        const minRating=Number(f.minRating??0), minCapacity=Number(f.minCapacity??0);
+        const filtered=candidates.filter(x=>(!minRating||(x.rating!=null&&x.rating>=minRating))&&(!minCapacity||x.roomsOrSeats==null||x.roomsOrSeats>=minCapacity));
+        const found=await persistSearchLeads(filtered);
+        await db.searchJobChunk.update({where:{id:chunk.id},data:{status:"COMPLETED",progress:100,found,completedAt:new Date()}});
+        const done=await db.searchJobChunk.count({where:{searchJobId:s.id,status:"COMPLETED"}});
+        const sum=await db.searchJobChunk.aggregate({where:{searchJobId:s.id,status:"COMPLETED"},_sum:{found:true}});
+        await db.searchJob.update({where:{id:s.id},data:{progress:Math.min(99,Math.round(done/scopes.length*100)),totalFound:sum._sum.found??0}});
+      }catch(error){
+        await db.searchJobChunk.update({where:{id:chunk.id},data:{status:"FAILED",error:error instanceof Error?error.message:"Unknown error",completedAt:new Date()}});
+        throw error;
       }
-
-      const created=await db.company.create({data:{
-        name:lead.name.trim(),normalizedName:normalize(lead.name),identityKey:key,
-        category:lead.category,address:lead.address,city:lead.city,province:lead.province,
-        region:lead.region,cap:lead.cap,website:lead.website,
-        normalizedWebsite:website||null,phone:lead.phone,email:lead.email,
-        rating:lead.rating,reviewCount:lead.reviewCount,roomsOrSeats:lead.roomsOrSeats,
-        decisionMakerName:lead.decisionMakerName,decisionMakerRole:lead.decisionMakerRole,
-        linkedinUrl:lead.linkedinUrl,sourceUrl:lead.sourceUrl,
-        lastVerifiedAt:new Date(),confidence
-      }});
-      for(const source of sources){
-        await db.leadSource.create({data:{
-          companyId:created.id,provider:source.provider,url:source.url,
-          verifiedAt:new Date(),rawConfidence:confidence
-        }});
-      }
-      inserted++;
     }
-    await db.searchJob.update({where:{id:s.id},data:{status:"COMPLETED",progress:100,totalFound:leads.length,completedAt:new Date()}});
+    await db.searchJob.update({where:{id:s.id},data:{status:"COMPLETED",progress:100,completedAt:new Date()}});
   }catch(e){
     await db.searchJob.update({where:{id:s.id},data:{status:"FAILED",error:e instanceof Error?e.message:"Unknown error",completedAt:new Date()}});
     throw e;
   }
 },{connection,concurrency:3,limiter:{max:3,duration:1000}});
-
 new Worker("lead-enrichment",async(job)=>{
   const j=await db.enrichmentJob.findUnique({where:{id:job.data.enrichmentJobId},include:{company:true}});
   if(!j)return;
