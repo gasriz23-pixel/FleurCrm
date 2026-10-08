@@ -60,7 +60,7 @@ export default async function Dashboard() {
             <p className="mt-2 text-sm text-slate-500">Avvia ricerche persistenti lato server.</p>
           </Link>
         </>}
-        <Link href="/marketing" className="rounded-xl border bg-white p-6 shadow-sm hover:border-slate-400"><h2 className="font-semibold">Email marketing</h2><p className="mt-2 text-sm text-slate-500">Campagne, invio asincrono, tracking e disiscrizioni.</p></Link>
+        {!isBackofficeOnly && <Link href="/marketing" className="rounded-xl border bg-white p-6 shadow-sm hover:border-slate-400"><h2 className="font-semibold">Email marketing</h2><p className="mt-2 text-sm text-slate-500">Campagne, invio asincrono, tracking e disiscrizioni.</p></Link>}
         <Link href="/tasks" className="rounded-xl border bg-white p-6 shadow-sm hover:border-slate-400">
           <h2 className="font-semibold">Back office / Attività</h2>
           <p className="mt-2 text-sm text-slate-500">Gestisci attività, scadenze e assegnazioni condivise.</p>
