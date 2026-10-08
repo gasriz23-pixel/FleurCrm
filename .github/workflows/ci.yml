@@ -11,10 +11,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          package-manager-cache: false
+      - run: npm install -g npm@11
       - run: npm install
       - run: npm run lint
-      - run: npm run build
       - run: npx prisma generate
+      - run: npm run build
       - run: npx tsc --noEmit
       - run: npm test -- --run
