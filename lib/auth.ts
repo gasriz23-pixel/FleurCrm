@@ -18,7 +18,6 @@ export function hashPassword(password: string) {
 }
 
 export function verifyPassword(password: string, stored: string) {
-  // Backward compatibility for hashes created by the first prototype.
   if (!stored.startsWith("scrypt$")) {
     const secret = process.env.AUTH_SECRET;
     if (!secret) throw new Error("AUTH_SECRET non configurato");
@@ -47,14 +46,28 @@ export async function createSession(userId: string) {
   });
 }
 
-export function verifySessionToken(token: string) {\n  const [userId, expires, signature] = token.split(".");\n  if (!userId || !expires || !signature || Number(expires) < Date.now()) return null;\n  try {\n    const expectedSignature = sign(`${userId}.${expires}`);\n    const actual = Buffer.from(signature, "hex");\n    const expected = Buffer.from(expectedSignature, "hex");\n    if (actual.length !== expected.length || !crypto.timingSafeEqual(actual, expected)) return null;\n    return { userId, expires: Number(expires) };\n  } catch {\n    return null;\n  }\n}\n\nexport async function getSessionUser() {
+export function verifySessionToken(token: string) {
+  const [userId, expires, signature] = token.split(".");
+  if (!userId || !expires || !signature || Number(expires) < Date.now()) return null;
+  try {
+    const expectedSignature = sign(`${userId}.${expires}`);
+    const actual = Buffer.from(signature, "hex");
+    const expected = Buffer.from(expectedSignature, "hex");
+    if (actual.length !== expected.length || !crypto.timingSafeEqual(actual, expected)) return null;
+    return { userId, expires: Number(expires) };
+  } catch {
+    return null;
+  }
+}
+
+export async function getSessionUser() {
   const token = (await cookies()).get(COOKIE)?.value;
   if (!token) return null;
   const session = verifySessionToken(token);
   if (!session) return null;
 
   return db.user.findUnique({
-    where: { id: userId },
+    where: { id: session.userId },
     select: { id: true, name: true, email: true, role: true },
   });
 }
