@@ -27,6 +27,7 @@ model User {
   assignedTasks Task[] @relation("TaskAssignee")
   createdTasks Task[] @relation("TaskCreator")
   auditLogs AuditLog[]
+  campaigns Campaign[] @relation("CampaignCreator")
 }
 
 model Company {
@@ -61,6 +62,7 @@ model Company {
   tasks Task[]
   sources LeadSource[]
   enrichmentJobs EnrichmentJob[]
+  campaignRecipients CampaignRecipient[]
   @@index([city])
   @@index([province])
   @@index([region])
@@ -190,4 +192,69 @@ model AuditLog {
   createdAt DateTime @default(now())
   @@index([entityType,entityId])
   @@index([userId,createdAt])
+}
+
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  PAUSED
+  FAILED
+}
+
+enum EmailDeliveryStatus {
+  QUEUED
+  SENT
+  OPENED
+  CLICKED
+  BOUNCED
+  FAILED
+  UNSUBSCRIBED
+}
+
+model Campaign {
+  id String @id @default(cuid())
+  name String
+  subject String
+  htmlBody String
+  textBody String?
+  status CampaignStatus @default(DRAFT)
+  scheduledAt DateTime?
+  createdById String
+  createdBy User @relation(fields: [createdById], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  recipients CampaignRecipient[]
+  @@index([status, scheduledAt])
+  @@index([createdById, createdAt])
+}
+
+model CampaignRecipient {
+  id String @id @default(cuid())
+  campaignId String
+  companyId String
+  email String
+  status EmailDeliveryStatus @default(QUEUED)
+  providerMessageId String?
+  sentAt DateTime?
+  openedAt DateTime?
+  clickedAt DateTime?
+  error String?
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([campaignId, companyId])
+  @@index([campaignId, status])
+  @@index([companyId, createdAt])
+}
+
+model EmailUnsubscribe {
+  id String @id @default(cuid())
+  email String @unique
+  reason String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
