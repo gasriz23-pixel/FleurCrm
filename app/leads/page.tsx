@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import CrmSidebar from "../../components/crm-sidebar";
 import { useEffect, useState } from "react";
 
 const categories = ["Hotel", "Ristorante", "Pizzeria", "B&B", "Affittacamere", "Studentato", "Motel"];
@@ -23,7 +23,7 @@ export default function LeadsPage() {
   const active=job&&["QUEUED","RUNNING"].includes(job.status); const stats=chunkData?.stats; const failed=chunkData?.chunks.filter(c=>c.status==="FAILED")??[];
   const [retryingFailed,setRetryingFailed]=useState(false);
   async function retryFailed(){if(!job?.id)return;setRetryingFailed(true);try{const r=await fetch("/api/search/"+job.id+"/retry-failed",{method:"POST"});const data=await r.json();if(!r.ok)throw new Error(data.error||"Errore retry");setJob({...job,status:"QUEUED",error:null});}catch(error){setJob({...job,error:error instanceof Error?error.message:"Errore retry"});}finally{setRetryingFailed(false)}}
-  return <main className="min-h-screen bg-[#f6f7f9] text-slate-900"><header className="border-b border-slate-200 bg-white px-4 py-3 md:px-8"><div className="flex items-center gap-3"><div className="grid h-9 w-9 place-items-center rounded-xl bg-emerald-600 font-black text-white">F</div><div><b>FleurCRM</b><div className="text-[10px] uppercase tracking-widest text-slate-400">Lavanolo</div></div><nav className="ml-auto hidden gap-1 lg:flex"><Link href="/dashboard" className="rounded-lg px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50">Dashboard</Link><Link href="/companies" className="rounded-lg px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50">Aziende</Link><Link href="/leads" className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">Ricerca lead</Link><Link href="/tasks" className="rounded-lg px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50">Attività</Link><Link href="/marketing" className="rounded-lg px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50">Marketing</Link></nav></div></header><div className="mx-auto max-w-7xl p-5 md:p-8">
+  return <><CrmSidebar/><main className="min-h-screen bg-[#f6f7f9] text-slate-900 md:pl-64"><header className="border-b border-slate-200 bg-white px-4 py-3 md:px-8"><div className="flex items-center gap-3"><div className="grid h-9 w-9 place-items-center rounded-xl bg-emerald-600 font-black text-white">F</div><div><b>FleurCRM</b><div className="text-[10px] uppercase tracking-widest text-slate-400">Lavanolo</div></div></div></header><div className="mx-auto max-w-7xl p-5 md:p-8">
     <h1 className="text-3xl font-bold">Ricerca lead</h1><p className="mt-2 text-slate-500">Le ricerche sono persistenti lato server e proseguono anche se cambi pagina.</p>
     <section className="mt-8 grid gap-4 rounded-2xl border border-slate-200 bg-white shadow-sm p-6 md:grid-cols-3">
       <label className="relative text-sm">Città<input value={city} onChange={e=>setCity(e.target.value)} className="mt-1 w-full rounded-xl border-slate-200 bg-white p-3 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50" placeholder="es. Modena"/>{locationSuggestions.length>0&&<div className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-lg border bg-white shadow">{locationSuggestions.map((item,i)=><button type="button" key={item.label+i} onClick={()=>{setCity(item.city??"");setProvince(item.province??"");setRegion(item.region??"");setCap(item.cap??"");setLocationSuggestions([])}} className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-100">{item.label}</button>)}</div>}</label>
@@ -37,5 +37,4 @@ export default function LeadsPage() {
       {failed.length>0&&<div className="rounded-xl border border-red-200 bg-red-50 p-4"><div className="flex items-center justify-between gap-3"><div className="font-semibold text-red-800">Comuni da verificare ({failed.length})</div><button type="button" onClick={retryFailed} disabled={retryingFailed||!!active} className="rounded-lg bg-red-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">{retryingFailed?"Riavvio...":"Riprova falliti"}</button></div><ul className="mt-2 max-h-48 space-y-1 overflow-auto text-sm text-red-700">{failed.map(c=><li key={c.id}><b>{c.location}</b>{c.error?": "+c.error:""}</li>)}</ul></div>}
       {job.error&&<p className="rounded bg-red-50 p-3 text-red-700">{job.error}</p>}
     </div>}</section>
-  </div></main>;
-}
+  </div></main></>
