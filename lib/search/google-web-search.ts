@@ -1,3 +1,4 @@
+import {ProviderRateLimitError} from "./providers";
 import type {LeadCandidate,LeadProvider,LeadSearchInput} from "./providers";
 
 type SearchItem={title?:string;link?:string;snippet?:string};
@@ -35,6 +36,7 @@ export class GoogleWebSearchProvider implements LeadProvider{
       url.searchParams.set("hl","it");
 
       const res=await fetch(url);
+      if(res.status===429){ const retry=Number(res.headers.get("retry-after")??"5"); throw new ProviderRateLimitError(Math.max(1000,Math.min(30000,retry*1000))); }
       if(!res.ok)continue;
       const data=await res.json() as {items?:SearchItem[]};
       for(const item of data.items??[]){
