@@ -121,7 +121,7 @@ export default function Tasks() {
   );
 
   return (
-    <main className="min-h-screen bg-[#f6f7f9] p-4 text-slate-900 md:p-8">
+    <main className="min-h-screen bg-[#f6f7f9] p-4 text-slate-900 md:p-8"><div className="mx-auto mb-5 flex max-w-6xl items-center gap-2 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1 shadow-sm"><a href="/dashboard" className="shrink-0 rounded-lg px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50">Dashboard</a><a href="/companies" className="shrink-0 rounded-lg px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50">Aziende</a><a href="/leads" className="shrink-0 rounded-lg px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50">Lead</a><a href="/tasks" className="shrink-0 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">Attività</a><a href="/marketing" className="shrink-0 rounded-lg px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50">Marketing</a></div>
       <div className="mx-auto max-w-6xl">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -248,7 +248,7 @@ export default function Tasks() {
                 <option value="MONTHLY">Mensile</option>
               </select>
               <div className="flex items-center justify-end">
-                {task.priority === "URGENT" && <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-700">URGENTE</span>}
+                <span className={"rounded-full px-2 py-1 text-xs font-semibold " + (task.priority==="URGENT" ? "bg-red-100 text-red-700" : task.priority==="HIGH" ? "bg-orange-100 text-orange-700" : task.priority==="LOW" ? "bg-slate-100 text-slate-500" : "bg-blue-100 text-blue-700")}>{task.priority}</span>
               </div>
             </div>
           ))}
