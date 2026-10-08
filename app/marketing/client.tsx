@@ -1,5 +1,5 @@
 "use client";
-import {useEffect,useState} from "react";
+import {useCallback,useEffect,useState} from "react";
 import Link from "next/link";
 
 type Company={id:string;name:string;email:string|null;city:string|null};
@@ -7,8 +7,8 @@ type Campaign={id:string;name:string;subject:string;status:string;scheduledAt:st
 
 export default function Marketing(){
  const[companies,setCompanies]=useState<Company[]>([]),[campaigns,setCampaigns]=useState<Campaign[]>([]),[selected,setSelected]=useState<string[]>([]),[name,setName]=useState(""),[subject,setSubject]=useState(""),[html,setHtml]=useState("<p>Ciao {{nome}},</p><p>Ti contattiamo per {{azienda}}.</p>"),[scheduledAt,setScheduledAt]=useState(""),[message,setMessage]=useState(""),[loading,setLoading]=useState(true);
- async function load(){setLoading(true);const [c,r]=await Promise.all([fetch("/api/companies?page=1&pageSize=100",{cache:"no-store"}),fetch("/api/marketing/campaigns",{cache:"no-store"})]);if(c.ok){const d=await c.json();setCompanies((d.items??[]).filter((x:Company)=>x.email))}if(r.ok)setCampaigns(await r.json());setLoading(false)}
- useEffect(()=>{void load()},[]);
+ const load=useCallback(async()=>{setLoading(true);const [c,r]=await Promise.all([fetch("/api/companies?page=1&pageSize=100",{cache:"no-store"}),fetch("/api/marketing/campaigns",{cache:"no-store"})]);if(c.ok){const d=await c.json();setCompanies((d.items??[]).filter((x:Company)=>x.email))}if(r.ok)setCampaigns(await r.json());setLoading(false)},[]);
+ useEffect(()=>{void load()},[load]);
  async function create(){setMessage("");if(!name||!subject||!html||!selected.length){setMessage("Nome, oggetto, contenuto e almeno un destinatario sono obbligatori");return}const r=await fetch("/api/marketing/campaigns",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({name,subject,htmlBody:html,companyIds:selected,scheduledAt:scheduledAt?new Date(scheduledAt).toISOString():undefined})});const d=await r.json();if(!r.ok){setMessage(d.error||"Errore");return}setMessage("Campagna "+d.status+" · "+d.queued+" destinatari · "+d.skipped+" esclusi");setSelected([]);setName("");setSubject("");setHtml("<p>Ciao {{nome}},</p>");setScheduledAt("");await load()}
  return <main className="min-h-screen bg-slate-100 p-5 text-slate-900 md:p-8"><div className="mx-auto max-w-7xl"><Link href="/dashboard" className="text-sm text-slate-500">← Dashboard</Link><h1 className="mt-2 text-3xl font-bold">Email marketing</h1><p className="mt-2 text-slate-500">Campagne con segmentazione, invio asincrono, tracking e disiscrizione.</p>
  <section className="mt-6 grid gap-6 lg:grid-cols-2"><div className="rounded-2xl border bg-white p-5"><h2 className="font-semibold">Nuova campagna</h2><div className="mt-4 grid gap-3"><input value={name} onChange={e=>setName(e.target.value)} placeholder="Nome campagna" className="rounded-lg border p-2"/><input value={subject} onChange={e=>setSubject(e.target.value)} placeholder="Oggetto" className="rounded-lg border p-2"/><textarea value={html} onChange={e=>setHtml(e.target.value)} rows={10} className="rounded-lg border p-2 font-mono text-sm"/><input type="datetime-local" value={scheduledAt} onChange={e=>setScheduledAt(e.target.value)} className="rounded-lg border p-2"/><button onClick={()=>void create()} className="rounded-lg bg-slate-900 px-4 py-2 font-semibold text-white">Invia / programma ({selected.length})</button>{message&&<p className="text-sm text-slate-600">{message}</p>}</div></div>
