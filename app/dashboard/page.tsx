@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { db } from "../../lib/db";
 import { getSessionUser } from "../../lib/auth";
@@ -45,23 +46,23 @@ export default async function Dashboard() {
 
       <div className="mt-8 grid gap-4 md:grid-cols-3">
         {!isBackofficeOnly && <>
-          {user.role === "ADMIN" && <a href="/admin/users" className="rounded-xl border bg-white p-6 shadow-sm hover:border-slate-400">
+          {user.role === "ADMIN" && <Link href="/admin/users" className="rounded-xl border bg-white p-6 shadow-sm hover:border-slate-400">
             <h2 className="font-semibold">Utenti e ruoli</h2>
             <p className="mt-2 text-sm text-slate-500">Gestisci utenti, ruoli e reset password.</p>
-          </a>}
-          <a href="/companies" className="rounded-xl border bg-white p-6 shadow-sm hover:border-slate-400">
+          </Link>}
+          <Link href="/companies" className="rounded-xl border bg-white p-6 shadow-sm hover:border-slate-400">
             <h2 className="font-semibold">CRM Lead</h2>
             <p className="mt-2 text-sm text-slate-500">Cerca, filtra e gestisci le aziende acquisite.</p>
           </a>
-          <a href="/leads" className="rounded-xl border bg-white p-6 shadow-sm hover:border-slate-400">
+          <Link href="/leads" className="rounded-xl border bg-white p-6 shadow-sm hover:border-slate-400">
             <h2 className="font-semibold">Ricerca lead</h2>
             <p className="mt-2 text-sm text-slate-500">Avvia ricerche persistenti lato server.</p>
-          </a>
+          </Link>
         </>}
-        <a href="/tasks" className="rounded-xl border bg-white p-6 shadow-sm hover:border-slate-400">
+        <Link href="/tasks" className="rounded-xl border bg-white p-6 shadow-sm hover:border-slate-400">
           <h2 className="font-semibold">Back office / Attività</h2>
           <p className="mt-2 text-sm text-slate-500">Gestisci attività, scadenze e assegnazioni condivise.</p>
-        </a>
+        </Link>
       </div>
     </div>
   </main>;
