@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireArea } from "../../../lib/permissions";
+import { requireArea } from "../../../../lib/permissions";
 
 type NominatimItem={display_name?:string;lat?:string;lon?:string;type?:string;class?:string;address?:Record<string,string>};
 
