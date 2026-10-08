@@ -58,7 +58,15 @@ export async function POST(req: Request) {
   }
 
   const {query, city, province, region, cap, radiusKm, categories, filters} = parsed.data;
-  const hasScope = Boolean(city || province || region || cap || filters.cities.length || filters.regions.length || filters.allItaly);\n  if (!query && !categories.length && !hasScope) {\n    return NextResponse.json(\n      { error: "SEARCH_SCOPE_REQUIRED" },\n      { status: 400 },\n    );\n  }\n\n  const safeFilters = {
+  const hasScope = Boolean(city || province || region || cap || filters.cities.length || filters.regions.length || filters.allItaly);
+  if (!query && !categories.length && !hasScope) {
+    return NextResponse.json(
+      { error: "SEARCH_SCOPE_REQUIRED" },
+      { status: 400 },
+    );
+  }
+
+  const safeFilters = {
     ...filters,
     cities: filters.cities.slice(0, 500),
     regions: filters.regions.slice(0, 20),
