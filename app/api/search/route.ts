@@ -1,35 +1,91 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { db } from "../../../lib/db";
 import { leadSearchQueue } from "../../../lib/queue";
 import { requireArea } from "../../../lib/permissions";
 
+const text = z.string().trim().max(200);
+const list = z.array(z.string().trim().min(1).max(120));
+
+const searchSchema = z.object({
+  query: text.default(""),
+  city: text.optional(),
+  province: text.optional(),
+  region: text.optional(),
+  cap: z.string().trim().regex(/^\d{5}$/).optional(),
+  radiusKm: z.number().finite().min(0).max(100).optional(),
+  categories: list.max(20).default([]),
+  filters: z.object({
+    cities: list.max(500).default([]),
+    regions: list.max(20).default([]),
+    providerConcurrency: z.number().finite().int().min(1).max(3).default(3),
+    searchConcurrency: z.number().finite().int().min(1).max(8).default(4),
+  }).catch({
+    cities: [],
+    regions: [],
+    providerConcurrency: 3,
+    searchConcurrency: 4,
+  }).default({
+    cities: [],
+    regions: [],
+    providerConcurrency: 3,
+    searchConcurrency: 4,
+  }),
+});
+
 export async function POST(req: Request) {
-  try { await requireArea("SEARCH"); } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : "FORBIDDEN" }, { status: 403 });
+  try {
+    await requireArea("SEARCH");
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "FORBIDDEN" },
+      { status: 403 },
+    );
   }
-  const body = await req.json();
-  const filters = body.filters && typeof body.filters === "object" ? body.filters : {};
-  const radiusKm = body.radiusKm == null ? undefined : Math.min(100, Math.max(0, Number(body.radiusKm)));
-  const categories = Array.isArray(body.categories) ? body.categories.map(String).filter(Boolean).slice(0, 20) : [];
-  const providerConcurrencyRaw = Number(filters.providerConcurrency ?? 3);
-  const providerConcurrency = Number.isFinite(providerConcurrencyRaw)
-    ? Math.min(3, Math.max(1, Math.trunc(providerConcurrencyRaw)))
-    : 3;
-  const searchConcurrencyRaw = Number(filters.searchConcurrency ?? 4);
-  const searchConcurrency = Number.isFinite(searchConcurrencyRaw)
-    ? Math.min(8, Math.max(1, Math.trunc(searchConcurrencyRaw)))
-    : 4;
+
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "INVALID_JSON" }, { status: 400 });
+  }
+
+  const parsed = searchSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "INVALID_SEARCH_REQUEST", issues: parsed.error.issues },
+      { status: 400 },
+    );
+  }
+
+  const {query, city, province, region, cap, radiusKm, categories, filters} = parsed.data;
   const safeFilters = {
     ...filters,
-    cities: Array.isArray(filters.cities) ? filters.cities.map(String).map((x:string)=>x.trim()).filter(Boolean).slice(0, 500) : [],
-    regions: Array.isArray(filters.regions) ? filters.regions.map(String).map((x:string)=>x.trim()).filter(Boolean).slice(0, 20) : [],
-    providerConcurrency,
-    searchConcurrency,
+    cities: filters.cities.slice(0, 500),
+    regions: filters.regions.slice(0, 20),
   };
-  const job = await db.searchJob.create({ data: {
-    query: body.query ?? "", city: body.city, province: body.province, region: body.region,
-    cap: typeof body.cap === "string" ? body.cap.trim() : undefined, radiusKm, categories, filters: safeFilters
-  }});
-  await leadSearchQueue.add("search", { searchJobId: job.id }, { removeOnComplete:100, removeOnFail:100 });
-  return NextResponse.json({ jobId: job.id, status: job.status }, { status: 202 });
+
+  const job = await db.searchJob.create({
+    data: {
+      query,
+      city,
+      province,
+      region,
+      cap,
+      radiusKm,
+      categories,
+      filters: safeFilters,
+    },
+  });
+
+  await leadSearchQueue.add(
+    "search",
+    {searchJobId: job.id},
+    {removeOnComplete: 100, removeOnFail: 100},
+  );
+
+  return NextResponse.json(
+    {jobId: job.id, status: job.status},
+    {status: 202},
+  );
 }
