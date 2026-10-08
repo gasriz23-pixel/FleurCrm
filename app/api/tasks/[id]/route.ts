@@ -10,7 +10,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
   const {id}=await params;
   const body = await req.json();
-  const allowed = ["title","description","status","priority","dueAt","assigneeId","companyId"];
+  const allowed = ["title","description","status","priority","dueAt","recurrenceRule","nextRunAt","assigneeId","companyId"];
   const data: Record<string, unknown> = {};
   for (const key of allowed) if (key in body) data[key] = key === "dueAt" && body[key] ? new Date(body[key]) : body[key];
   const task = await db.$transaction(async tx => {
