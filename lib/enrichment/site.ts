@@ -152,11 +152,6 @@ export async function enrichWebsite(website:string):Promise<EnrichmentResult>{
         const text=$("body").text().replace(/\s+/g," ");
         for(const e of text.match(EMAIL_RE)||[])emails.add(normalizeEmail(e));
         for(const p of text.match(PHONE_RE)||[])phones.add(normalizePhone(p));
-        const $=cheerio.load(text);
-        for(const a of $("a[href]").toArray()){
-          const target=absolute(current.href,$(a).attr("href")||"");
-          if(target&&/linkedin\.com\/in\//i.test(target)&&!linkedinUrl)linkedinUrl=target;
-        }
       }catch{}finally{await page.close()}
     }
   }finally{await browser.close()}
