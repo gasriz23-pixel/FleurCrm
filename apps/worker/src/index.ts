@@ -152,7 +152,7 @@ new Worker("lead-search",async(job)=>{
           filters:{...f,cities:[],regions:[],providerConcurrency:f.providerConcurrency??3}
         });
         const minRating=Number(f.minRating??0), minCapacity=Number(f.minCapacity??0);
-        const filtered=candidates.filter(x=>(!minRating||(x.rating!=null&&x.rating>=minRating))&&(!minCapacity||x.roomsOrSeats==null||x.roomsOrSeats>=minCapacity));
+        const filtered=candidates.filter(x=>(!minRating||(x.rating!=null&&x.rating>=minRating))&&(!minCapacity||(x.roomsOrSeats!=null&&x.roomsOrSeats>=minCapacity)));
         const found=await persistSearchLeads(filtered);
         await db.searchJobChunk.update({where:{id:chunk.id},data:{status:"COMPLETED",progress:100,found,completedAt:new Date(),error:null}});
         const stats=await db.searchJobChunk.groupBy({
