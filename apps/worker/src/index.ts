@@ -114,11 +114,11 @@ new Worker("lead-search",async(job)=>{
     const allItaly=Boolean(f.allItaly)||regions.length>=20;
     const municipalityScopes=allItaly?await loadItalianMunicipalities():[];
     const locationScopes=allItaly
-      ? municipalityScopes.map(scope=>({name:scope.name,province:scope.province,region:scope.region,cap:scope.cap}))
-      : cities.map(name=>({name})).concat(regions.map(name=>({name})));
+      ? municipalityScopes.map(scope=>({name:scope.name,kind:"city" as const,province:scope.province,region:scope.region,cap:scope.cap}))
+      : cities.map(name=>({name,kind:"city" as const})).concat(regions.map(name=>({name,kind:"region" as const})));
     const scopes=locationScopes.length
       ? locationScopes
-      : [{name:s.city??s.province??s.region??s.cap??"default",province:s.province??undefined,region:s.region??undefined,cap:s.cap??undefined}];
+      : [{name:s.city??s.province??s.region??s.cap??"default",kind:"fallback" as const,province:s.province??undefined,region:s.region??undefined,cap:s.cap??undefined}];
     const existing=await db.searchJobChunk.findMany({where:{searchJobId:s.id},orderBy:{sequence:"asc"}});
     if(!existing.length && scopes.length){
       await db.searchJobChunk.createMany({
@@ -135,16 +135,16 @@ new Worker("lead-search",async(job)=>{
       const scope=scopes[chunk.sequence];
       if(!scope)continue;
       const location=scope.name;
-      const isMunicipalitySearch=allItaly||cities.length>0||(Boolean(s.city)&&regions.length===0);
-      const isRegionSearch=regions.length>0&&!allItaly&&!cities.length;
+      const isCityScope=scope.kind==="city"||(scope.kind==="fallback"&&Boolean(s.city));
+      const isRegionScope=scope.kind==="region"||(scope.kind==="fallback"&&!s.city&&Boolean(s.region));
       await db.searchJobChunk.update({where:{id:chunk.id},data:{status:"RUNNING",progress:5,attempts:{increment:1},startedAt:new Date(),error:null,completedAt:null}});
       try{
         const candidates=await providerRegistry.searchAll({
           query:s.query,
-          city:isMunicipalitySearch?location:undefined,
-          province:isMunicipalitySearch?(scope.province??undefined):s.province??undefined,
-          region:isRegionSearch?location:(isMunicipalitySearch?(scope.region??undefined):s.region??undefined),
-          cap:isMunicipalitySearch?(scope.cap??s.cap??undefined):s.cap??undefined,
+          city:isCityScope?location:undefined,
+          province:isCityScope?(scope.province??s.province??undefined):s.province??undefined,
+          region:isRegionScope?location:(isCityScope?(scope.region??s.region??undefined):s.region??undefined),
+          cap:isCityScope?(scope.cap??s.cap??undefined):s.cap??undefined,
           radiusKm:s.radiusKm??undefined,
           categories:Array.isArray(s.categories)?s.categories.map(String):[],
           filters:{...f,cities:[],regions:[],providerConcurrency:f.providerConcurrency??3}
@@ -153,9 +153,16 @@ new Worker("lead-search",async(job)=>{
         const filtered=candidates.filter(x=>(!minRating||(x.rating!=null&&x.rating>=minRating))&&(!minCapacity||x.roomsOrSeats==null||x.roomsOrSeats>=minCapacity));
         const found=await persistSearchLeads(filtered);
         await db.searchJobChunk.update({where:{id:chunk.id},data:{status:"COMPLETED",progress:100,found,completedAt:new Date(),error:null}});
-        const done=await db.searchJobChunk.count({where:{searchJobId:s.id,status:"COMPLETED"}});
-        const sum=await db.searchJobChunk.aggregate({where:{searchJobId:s.id,status:"COMPLETED"},_sum:{found:true}});
-        await db.searchJob.update({where:{id:s.id},data:{progress:Math.min(99,Math.round(done/scopes.length*100)),totalFound:sum._sum.found??0}});
+        const stats=await db.searchJobChunk.groupBy({
+          by:["status"],
+          where:{searchJobId:s.id},
+          _count:{_all:true},
+          _sum:{found:true},
+        });
+        const completed=stats.find(x=>x.status==="COMPLETED");
+        const done=completed?._count._all??0;
+        const totalFound=stats.reduce((sum,row)=>sum+(row._sum.found??0),0);
+        await db.searchJob.update({where:{id:s.id},data:{progress:Math.min(99,Math.round(done/scopes.length*100)),totalFound}});
       }catch(error){
         await db.searchJobChunk.update({where:{id:chunk.id},data:{status:"FAILED",error:error instanceof Error?error.message:"Unknown error",completedAt:new Date()}});
         throw error;
