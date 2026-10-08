@@ -62,15 +62,15 @@ async function persistSearchLeads(leads: Awaited<ReturnType<typeof providerRegis
     }
     let created;
     try{
-      const created=await db.company.create({data:{
-      name:lead.name.trim(),normalizedName:normalize(lead.name),identityKey:key,category:lead.category,
-      address:lead.address,city:lead.city,province:lead.province,region:lead.region,cap:lead.cap,
-      website:lead.website,normalizedWebsite:website||null,phone:lead.phone,email:lead.email,
-      rating:lead.rating,reviewCount:lead.reviewCount,roomsOrSeats:lead.roomsOrSeats,
-      decisionMakerName:lead.decisionMakerName,decisionMakerRole:lead.decisionMakerRole,
-      linkedinUrl:lead.linkedinUrl,sourceUrl:lead.sourceUrl,lastVerifiedAt:new Date(),confidence
-    }});
-    for(const source of sources)await db.leadSource.create({data:{companyId:created.id,provider:source.provider,url:source.url,verifiedAt:new Date(),rawConfidence:confidence}});
+      created=await db.company.create({data:{
+        name:lead.name.trim(),normalizedName:normalize(lead.name),identityKey:key,category:lead.category,
+        address:lead.address,city:lead.city,province:lead.province,region:lead.region,cap:lead.cap,
+        website:lead.website,normalizedWebsite:website||null,phone:lead.phone,email:lead.email,
+        rating:lead.rating,reviewCount:lead.reviewCount,roomsOrSeats:lead.roomsOrSeats,
+        decisionMakerName:lead.decisionMakerName,decisionMakerRole:lead.decisionMakerRole,
+        linkedinUrl:lead.linkedinUrl,sourceUrl:lead.sourceUrl,lastVerifiedAt:new Date(),confidence
+      }});
+      for(const source of sources)await db.leadSource.create({data:{companyId:created.id,provider:source.provider,url:source.url,verifiedAt:new Date(),rawConfidence:confidence}});
     }catch(error){
       if((error as {code?:string})?.code!=="P2002")throw error;
       const raced=await db.company.findUnique({where:{identityKey:key}});
@@ -121,7 +121,7 @@ new Worker("lead-search",async(job)=>{
       if(chunk.status==="COMPLETED")continue;
       const location=scopes[chunk.sequence];
       if(!location)continue;
-      await db.searchJobChunk.update({where:{id:chunk.id},data:{status:"RUNNING",progress:5,attempts:{increment:1},startedAt:new Date(),error:null}});
+      await db.searchJobChunk.update({where:{id:chunk.id},data:{status:"RUNNING",progress:5,attempts:{increment:1},startedAt:new Date(),error:null,completedAt:null}});
       try{
         const candidates=await providerRegistry.searchAll({
           query:s.query,city:cities.length?location:undefined,
@@ -133,7 +133,7 @@ new Worker("lead-search",async(job)=>{
         const minRating=Number(f.minRating??0), minCapacity=Number(f.minCapacity??0);
         const filtered=candidates.filter(x=>(!minRating||(x.rating!=null&&x.rating>=minRating))&&(!minCapacity||x.roomsOrSeats==null||x.roomsOrSeats>=minCapacity));
         const found=await persistSearchLeads(filtered);
-        await db.searchJobChunk.update({where:{id:chunk.id},data:{status:"COMPLETED",progress:100,found,completedAt:new Date()}});
+        await db.searchJobChunk.update({where:{id:chunk.id},data:{status:"COMPLETED",progress:100,found,completedAt:new Date(),error:null}});
         const done=await db.searchJobChunk.count({where:{searchJobId:s.id,status:"COMPLETED"}});
         const sum=await db.searchJobChunk.aggregate({where:{searchJobId:s.id,status:"COMPLETED"},_sum:{found:true}});
         await db.searchJob.update({where:{id:s.id},data:{progress:Math.min(99,Math.round(done/scopes.length*100)),totalFound:sum._sum.found??0}});
@@ -141,14 +141,38 @@ new Worker("lead-search",async(job)=>{
         await db.searchJobChunk.update({where:{id:chunk.id},data:{status:"FAILED",error:error instanceof Error?error.message:"Unknown error",completedAt:new Date()}});
         throw error;
       }
+    }};
+    const results=await Promise.allSettled(
+      Array.from({length:Math.min(concurrency,chunks.length)},()=>processChunk())
+    );
+    const failures=results
+      .filter((result):result is PromiseRejectedResult=>result.status==="rejected")
+      .map(result=>result.reason);
+    const failedChunks=await db.searchJobChunk.count({where:{searchJobId:s.id,status:"FAILED"}});
+    if(failedChunks>0||failures.length>0){
+      const message=failures[0] instanceof Error
+        ? failures[0].message
+        : `${failedChunks} chunk di ricerca non completati`;
+      await db.searchJob.update({
+        where:{id:s.id},
+        data:{status:"FAILED",error:message,completedAt:new Date()},
+      });
+      throw failures[0] instanceof Error?failures[0]:new Error(message);
     }
-    await Promise.all(Array.from({length:Math.min(concurrency,chunks.length)},()=>processChunk()));
-    await db.searchJob.update({where:{id:s.id},data:{status:"COMPLETED",progress:100,completedAt:new Date()}});
+    const sum=await db.searchJobChunk.aggregate({where:{searchJobId:s.id,status:"COMPLETED"},_sum:{found:true}});
+    await db.searchJob.update({
+      where:{id:s.id},
+      data:{status:"COMPLETED",progress:100,totalFound:sum._sum.found??0,completedAt:new Date(),error:null},
+    });
   }catch(e){
-    await db.searchJob.update({where:{id:s.id},data:{status:"FAILED",error:e instanceof Error?e.message:"Unknown error",completedAt:new Date()}});
+    const current=await db.searchJob.findUnique({where:{id:s.id},select:{status:true}});
+    if(current?.status!=="FAILED"){
+      await db.searchJob.update({where:{id:s.id},data:{status:"FAILED",error:e instanceof Error?e.message:"Unknown error",completedAt:new Date()}});
+    }
     throw e;
   }
 },{connection,concurrency:3,limiter:{max:3,duration:1000}});
+
 new Worker("lead-enrichment",async(job)=>{
   const j=await db.enrichmentJob.findUnique({where:{id:job.data.enrichmentJobId},include:{company:true}});
   if(!j)return;
