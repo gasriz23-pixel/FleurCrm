@@ -5,6 +5,7 @@ import { requireUser } from "../../../lib/permissions";
 import { UserRole } from "@prisma/client";
 
 const roles = new Set(Object.values(UserRole));
+const MIN_PASSWORD_LENGTH = 12;
 
 export async function GET() {
   try { await requireUser([UserRole.ADMIN]); } catch (e) {
@@ -29,8 +30,11 @@ export async function POST(req: Request) {
   const password = String(body.password ?? "");
   const role = String(body.role ?? "COMMERCIAL");
 
-  if (!name || !email || !password || password.length < 8 || !roles.has(role as UserRole)) {
-    return NextResponse.json({ error: "Nome, email, ruolo e password di almeno 8 caratteri sono obbligatori" }, { status: 400 });
+  if (!name || !email || !password || password.length < MIN_PASSWORD_LENGTH || !roles.has(role as UserRole)) {
+    return NextResponse.json(
+      { error: `Nome, email, ruolo e password di almeno ${MIN_PASSWORD_LENGTH} caratteri sono obbligatori` },
+      { status: 400 },
+    );
   }
 
   try {
