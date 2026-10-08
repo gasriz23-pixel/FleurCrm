@@ -11,11 +11,20 @@ export async function POST(req: Request) {
   const filters = body.filters && typeof body.filters === "object" ? body.filters : {};
   const radiusKm = body.radiusKm == null ? undefined : Math.min(100, Math.max(0, Number(body.radiusKm)));
   const categories = Array.isArray(body.categories) ? body.categories.map(String).filter(Boolean).slice(0, 20) : [];
+  const providerConcurrencyRaw = Number(filters.providerConcurrency ?? 3);
+  const providerConcurrency = Number.isFinite(providerConcurrencyRaw)
+    ? Math.min(3, Math.max(1, Math.trunc(providerConcurrencyRaw)))
+    : 3;
+  const searchConcurrencyRaw = Number(filters.searchConcurrency ?? 4);
+  const searchConcurrency = Number.isFinite(searchConcurrencyRaw)
+    ? Math.min(8, Math.max(1, Math.trunc(searchConcurrencyRaw)))
+    : 4;
   const safeFilters = {
     ...filters,
     cities: Array.isArray(filters.cities) ? filters.cities.map(String).map((x:string)=>x.trim()).filter(Boolean).slice(0, 500) : [],
     regions: Array.isArray(filters.regions) ? filters.regions.map(String).map((x:string)=>x.trim()).filter(Boolean).slice(0, 20) : [],
-    providerConcurrency: Math.min(3, Math.max(1, Number(filters.providerConcurrency ?? 3)))
+    providerConcurrency,
+    searchConcurrency,
   };
   const job = await db.searchJob.create({ data: {
     query: body.query ?? "", city: body.city, province: body.province, region: body.region,
