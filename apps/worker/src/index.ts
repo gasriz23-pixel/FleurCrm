@@ -5,6 +5,7 @@ import {providerRegistry} from "../../../lib/search/registry";
 import {dedupeLeads, normalizeWebsite} from "../../../lib/search/dedupe";
 import {enrichWebsite} from "../../../lib/enrichment/site";
 import {loadItalianMunicipalities} from "../../../lib/search/istat-municipalities";
+import {buildSearchScopes} from "../../../lib/search/scopes";
 
 const connection=new IORedis(process.env.REDIS_URL??"redis://localhost:6379",{maxRetriesPerRequest:null});
 
@@ -113,12 +114,13 @@ new Worker("lead-search",async(job)=>{
     const regions=Array.isArray(f.regions)?f.regions.map(String).map(x=>x.trim()).filter(Boolean):[];
     const allItaly=Boolean(f.allItaly)||regions.length>=20;
     const municipalityScopes=allItaly?await loadItalianMunicipalities():[];
-    const locationScopes=allItaly
-      ? municipalityScopes.map(scope=>({name:scope.name,kind:"city" as const,province:scope.province,region:scope.region,cap:scope.cap}))
-      : cities.map(name=>({name,kind:"city" as const})).concat(regions.map(name=>({name,kind:"region" as const})));
-    const scopes=locationScopes.length
-      ? locationScopes
-      : [{name:s.city??s.province??s.region??s.cap??"default",kind:"fallback" as const,province:s.province??undefined,region:s.region??undefined,cap:s.cap??undefined}];
+    const scopes=buildSearchScopes({
+      allItaly,
+      cities,
+      regions,
+      municipalities:municipalityScopes,
+      fallback:{name:s.city??s.province??s.region??s.cap??"default",province:s.province??undefined,region:s.region??undefined,cap:s.cap??undefined},
+    });
     const existing=await db.searchJobChunk.findMany({where:{searchJobId:s.id},orderBy:{sequence:"asc"}});
     if(!existing.length && scopes.length){
       await db.searchJobChunk.createMany({
