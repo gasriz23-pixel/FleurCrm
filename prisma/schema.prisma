@@ -143,6 +143,8 @@ model Task {
   status TaskStatus @default(TODO)
   priority Priority @default(MEDIUM)
   dueAt DateTime?
+  recurrenceRule String?
+  nextRunAt DateTime?
   assigneeId String?
   assignee User? @relation("TaskAssignee", fields:[assigneeId], references:[id])
   creatorId String?
@@ -153,6 +155,7 @@ model Task {
   updatedAt DateTime @updatedAt
   @@index([assigneeId,status])
   @@index([dueAt])
+  @@index([nextRunAt])
   @@index([companyId,status])
 }
 
