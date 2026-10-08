@@ -88,7 +88,9 @@ new Worker("lead-search",async(job)=>{
     if(!existing.length)for(let i=0;i<scopes.length;i++)await db.searchJobChunk.create({data:{searchJobId:s.id,sequence:i,location:scopes[i]}});
     await db.searchJob.update({where:{id:s.id},data:{status:"RUNNING",startedAt:s.startedAt??new Date(),progress:1,error:null}});
     const chunks=await db.searchJobChunk.findMany({where:{searchJobId:s.id},orderBy:{sequence:"asc"}});
-    for(const chunk of chunks){
+    const concurrency=Math.max(1,Math.min(8,Number(f.searchConcurrency??4)));
+    let cursor=0;
+    const processChunk=async()=>{ while(cursor<chunks.length){ const index=cursor++; const chunk=chunks[index];
       if(chunk.status==="COMPLETED")continue;
       const location=scopes[chunk.sequence];
       if(!location)continue;
@@ -113,6 +115,7 @@ new Worker("lead-search",async(job)=>{
         throw error;
       }
     }
+    await Promise.all(Array.from({length:Math.min(concurrency,chunks.length)},()=>processChunk()));
     await db.searchJob.update({where:{id:s.id},data:{status:"COMPLETED",progress:100,completedAt:new Date()}});
   }catch(e){
     await db.searchJob.update({where:{id:s.id},data:{status:"FAILED",error:e instanceof Error?e.message:"Unknown error",completedAt:new Date()}});
