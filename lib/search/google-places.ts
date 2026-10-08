@@ -1,3 +1,4 @@
+import {ProviderRateLimitError} from "./providers";
 import type {LeadCandidate,LeadProvider,LeadSearchInput} from "./providers";
 
 const typeMap:Record<string,string|undefined>={
@@ -30,6 +31,7 @@ export class GooglePlacesProvider implements LeadProvider {
             "X-Goog-FieldMask":"places.displayName,places.formattedAddress,places.websiteUri,places.nationalPhoneNumber,places.rating,places.userRatingCount,places.googleMapsUri,places.id,nextPageToken"},
           body:JSON.stringify(body)
         });
+        if(res.status===429){ const retry=Number(res.headers.get("retry-after")??"5"); throw new ProviderRateLimitError(Math.max(1000,Math.min(30000,retry*1000))); }
         if(!res.ok)break;
         const data=await res.json();
         for(const p of data.places??[]){
