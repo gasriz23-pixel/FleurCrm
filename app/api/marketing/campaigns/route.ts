@@ -20,7 +20,21 @@ export async function GET(){
     take:100,
     include:{createdBy:{select:{id:true,name:true}},_count:{select:{recipients:true}}}
   });
-  return NextResponse.json(campaigns);
+  const stats=await db.campaignRecipient.groupBy({
+    by:["campaignId","status"],
+    where:{campaignId:{in:campaigns.map(campaign=>campaign.id)}},
+    _count:{_all:true},
+  });
+  const withStats=campaigns.map(campaign=>{
+    const rows=stats.filter(row=>row.campaignId===campaign.id);
+    const counts=Object.fromEntries(rows.map(row=>[row.status,row._count._all]));
+    return { ...campaign, stats:{
+      queued:counts.QUEUED??0,sent:counts.SENT??0,opened:counts.OPENED??0,
+      clicked:counts.CLICKED??0,bounced:counts.BOUNCED??0,failed:counts.FAILED??0,
+      unsubscribed:counts.UNSUBSCRIBED??0,
+    }};
+  });
+  return NextResponse.json(withStats);
 }
 
 export async function POST(req:Request){
