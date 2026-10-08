@@ -1,3 +1,4 @@
+import {ProviderRateLimitError} from "./providers";
 import type {LeadCandidate,LeadProvider,LeadSearchInput} from "./providers";
 
 const endpoints=[
@@ -59,6 +60,7 @@ async function request(query:string){
   for(const endpoint of endpoints){
     try{
       const res=await fetch(endpoint,{method:"POST",body:query,headers:{"content-type":"text/plain","user-agent":"FleurCrm/1.0 lead-discovery"}});
+      if(res.status===429){ const retry=Number(res.headers.get("retry-after")??"10"); throw new ProviderRateLimitError(Math.max(1000,Math.min(30000,retry*1000))); }
       if(!res.ok){lastError=new Error("Overpass HTTP "+res.status);continue;}
       return await res.json();
     }catch(e){lastError=e instanceof Error?e:new Error("Overpass request failed");}
