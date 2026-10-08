@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verifySessionToken } from "./lib/auth";
 
-const protectedPrefixes = ["/dashboard", "/companies", "/tasks", "/leads", "/admin"];
+const protectedPrefixes = ["/dashboard", "/companies", "/tasks", "/leads", "/admin", "/marketing"];
 const apiPrefixes = ["/api"];
 const stateChangingMethods = new Set(["POST","PUT","PATCH","DELETE"]);
 
