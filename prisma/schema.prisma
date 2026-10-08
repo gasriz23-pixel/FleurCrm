@@ -7,14 +7,47 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum UserRole {\n  ADMIN\n  COMMERCIAL\n  BACKOFFICE\n}
+enum UserRole {
+  ADMIN
+  COMMERCIAL
+  BACKOFFICE
+}
 
 // ADMIN e COMMERCIAL sono operatori full-access; BACKOFFICE è limitato alle funzioni operative.
-enum LeadStatus {\n  NEW\n  CONTACTED\n  QUALIFIED\n  OPPORTUNITY\n  WON\n  LOST\n}
-enum TaskStatus {\n  TODO\n  IN_PROGRESS\n  DONE\n  CANCELLED\n}
-enum Priority {\n  LOW\n  MEDIUM\n  HIGH\n  URGENT\n}
-enum SearchJobStatus {\n  QUEUED\n  RUNNING\n  COMPLETED\n  FAILED\n  CANCELLED\n}
-enum EnrichmentJobStatus {\n  QUEUED\n  RUNNING\n  COMPLETED\n  FAILED\n  CANCELLED\n}
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  OPPORTUNITY
+  WON
+  LOST
+}
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+enum SearchJobStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+enum EnrichmentJobStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
 
 model User {
   id String @id @default(cuid())
