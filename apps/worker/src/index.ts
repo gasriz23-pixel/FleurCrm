@@ -28,6 +28,15 @@ function confidenceFor(lead:{email?:string;phone?:string;website?:string}){
   if(lead.email)score+=0.25;
   return Math.min(1,score);
 }
+function nextOccurrence(from:Date,rule:string){
+  const next=new Date(from);
+  if(rule==="DAILY") next.setDate(next.getDate()+1);
+  else if(rule==="WEEKLY") next.setDate(next.getDate()+7);
+  else if(rule==="MONTHLY") next.setMonth(next.getMonth()+1);
+  else return null;
+  return next;
+}
+
 function sourceEntries(lead:{sourceUrls?:string[];sourceUrl?:string;providers?:string[];provider?:string}){
   const urls=[...(lead.sourceUrls??[]),...(lead.sourceUrl?[lead.sourceUrl]:[])].filter(Boolean);
   const providers=[...(lead.providers??[]),...(lead.provider?[lead.provider]:[])].filter(Boolean);
@@ -320,3 +329,16 @@ new Worker("email-campaign",async(job)=>{
 },{connection,concurrency:5,limiter:{max:5,duration:1000}});
 
 void emailQueue.waitUntilReady();
+\nnew Worker("task-recurrence",async()=>{
+  const now=new Date();
+  const tasks=await db.task.findMany({where:{status:"DONE",recurrenceRule:{in:["DAILY","WEEKLY","MONTHLY"]},nextRunAt:{lte:now}},take:100});
+  for(const task of tasks){
+    const next=task.nextRunAt?nextOccurrence(task.nextRunAt,task.recurrenceRule??""):null;
+    if(!next)continue;
+    await db.$transaction(async tx=>{
+      const existing=await tx.task.findFirst({where:{title:task.title,creatorId:task.creatorId,recurrenceRule:task.recurrenceRule,nextRunAt:next}});
+      if(!existing) await tx.task.create({data:{title:task.title,description:task.description,status:"TODO",priority:task.priority,dueAt:next,recurrenceRule:task.recurrenceRule,nextRunAt:next,assigneeId:task.assigneeId,creatorId:task.creatorId,companyId:task.companyId}});
+      await tx.task.update({where:{id:task.id},data:{nextRunAt:next}});
+    });
+  }
+},{connection,concurrency:1,limiter:{max:1,duration:60000}});
