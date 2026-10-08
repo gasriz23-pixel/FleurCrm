@@ -10,6 +10,8 @@ type Task = {
   status: string;
   priority: string;
   dueAt?: string | null;
+  recurrenceRule?: string | null;
+  nextRunAt?: string | null;
   assignee?: User | null;
   company?: { id: string; name: string } | null;
 };
@@ -25,6 +27,7 @@ export default function Tasks() {
   const [assigneeId, setAssigneeId] = useState("");
   const [priority, setPriority] = useState("MEDIUM");
   const [dueAt, setDueAt] = useState("");
+  const [recurrenceRule, setRecurrenceRule] = useState("");
   const [statusFilter, setStatusFilter] = useState("OPEN");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -54,6 +57,10 @@ export default function Tasks() {
 
   async function createTask() {
     if (!title.trim() || saving) return;
+    if (recurrenceRule && !dueAt) {
+      setError("Per una attività ricorrente serve una prima scadenza.");
+      return;
+    }
     setSaving(true);
     setError("");
     try {
@@ -66,6 +73,7 @@ export default function Tasks() {
           assigneeId: assigneeId || null,
           priority,
           dueAt: dueAt || null,
+          recurrenceRule: recurrenceRule || null,
         }),
       });
       if (!response.ok) {
@@ -77,6 +85,7 @@ export default function Tasks() {
       setAssigneeId("");
       setPriority("MEDIUM");
       setDueAt("");
+      setRecurrenceRule("");
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Errore di salvataggio");
@@ -154,6 +163,12 @@ export default function Tasks() {
               {priorities.map((value) => <option key={value}>{value}</option>)}
             </select>
             <input type="datetime-local" value={dueAt} onChange={(e) => setDueAt(e.target.value)} className="rounded-lg border p-2 md:col-span-2" />
+            <select value={recurrenceRule} onChange={(e) => setRecurrenceRule(e.target.value)} disabled={!dueAt} className="rounded-lg border p-2 disabled:cursor-not-allowed disabled:bg-slate-100">
+              <option value="">Nessuna ricorrenza</option>
+              <option value="DAILY">Ogni giorno</option>
+              <option value="WEEKLY">Ogni settimana</option>
+              <option value="MONTHLY">Ogni mese</option>
+            </select>
             <button
               onClick={() => void createTask()}
               disabled={!title.trim() || saving}
@@ -169,6 +184,7 @@ export default function Tasks() {
           <div className="flex flex-col gap-3 border-b p-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="font-semibold">Elenco attività</h2>
+              <div className="text-xs text-slate-500">Le attività scadute restano evidenziate come promemoria operativo.</div>
               <p className="text-sm text-slate-500">{visibleTasks.length} attività visualizzate</p>
             </div>
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="rounded-lg border p-2 text-sm">
@@ -183,13 +199,15 @@ export default function Tasks() {
 
           {loading && <div className="p-8 text-center text-slate-500">Caricamento…</div>}
           {!loading && visibleTasks.map((task) => (
-            <div key={task.id} className="grid gap-3 border-b p-5 last:border-0 md:grid-cols-6">
+            <div key={task.id} className={"grid gap-3 border-b p-5 last:border-0 md:grid-cols-7 " + (task.dueAt && new Date(task.dueAt).getTime() < Date.now() && task.status !== "DONE" && task.status !== "CANCELLED" ? "bg-amber-50/60" : "")}>
               <div className="md:col-span-2">
                 <div className="font-medium">{task.title}</div>
                 {task.description && <div className="mt-1 text-sm text-slate-600">{task.description}</div>}
                 <div className="mt-2 text-xs text-slate-500">
                   {task.company?.name || "Nessun lead collegato"}
                   {task.dueAt ? " · Scadenza " + new Date(task.dueAt).toLocaleString("it-IT") : ""}
+                  {task.dueAt && new Date(task.dueAt).getTime() < Date.now() && task.status !== "DONE" && task.status !== "CANCELLED" && <span className="ml-2 font-semibold text-amber-700">SCADUTA</span>}
+                  {task.recurrenceRule && <span className="ml-2 font-medium text-slate-600">↻ {task.recurrenceRule === "DAILY" ? "Giornaliera" : task.recurrenceRule === "WEEKLY" ? "Settimanale" : "Mensile"}{task.nextRunAt ? " · Prossima " + new Date(task.nextRunAt).toLocaleString("it-IT") : ""}</span>}
                 </div>
               </div>
               <select
@@ -216,6 +234,17 @@ export default function Tasks() {
                 aria-label={"Stato di " + task.title}
               >
                 {statuses.map((value) => <option key={value}>{value}</option>)}
+              </select>
+              <select
+                value={task.recurrenceRule || ""}
+                onChange={(e) => void update(task.id, { recurrenceRule: e.target.value || null })}
+                className="rounded border p-2"
+                aria-label={"Ricorrenza di " + task.title}
+              >
+                <option value="">Una tantum</option>
+                <option value="DAILY">Giornaliera</option>
+                <option value="WEEKLY">Settimanale</option>
+                <option value="MONTHLY">Mensile</option>
               </select>
               <div className="flex items-center justify-end">
                 {task.priority === "URGENT" && <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-700">URGENTE</span>}

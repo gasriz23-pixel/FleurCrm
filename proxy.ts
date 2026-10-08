@@ -1,10 +1,33 @@
-import {NextResponse} from "next/server";
-import type {NextRequest} from "next/server";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { verifySessionToken } from "./lib/auth";
 
-export function proxy(request:NextRequest){
- const protectedPath=request.nextUrl.pathname.startsWith("/dashboard")||request.nextUrl.pathname.startsWith("/companies")||request.nextUrl.pathname.startsWith("/tasks");
- if(!protectedPath)return NextResponse.next();
- if(request.cookies.get("fleur_session")?.value)return NextResponse.next();
- return NextResponse.redirect(new URL("/login",request.url));
+const protectedPrefixes = ["/dashboard", "/companies", "/tasks", "/leads", "/admin", "/marketing"];
+const apiPrefixes = ["/api"];
+const stateChangingMethods = new Set(["POST","PUT","PATCH","DELETE"]);
+
+export function proxy(request: NextRequest) {
+  const path = request.nextUrl.pathname;
+  const protectedPath = protectedPrefixes.some((prefix) => path === prefix || path.startsWith(prefix + "/"));
+  const apiPath = apiPrefixes.some((prefix) => path === prefix || path.startsWith(prefix + "/"));
+  const publicApi = path === "/api/auth/login" || path.startsWith("/api/marketing/track/") || path === "/api/marketing/unsubscribe";
+
+  if (publicApi) return NextResponse.next();
+  if (!protectedPath && !apiPath) return NextResponse.next();
+
+  if (apiPath && stateChangingMethods.has(request.method)) {
+    const origin = request.headers.get("origin");
+    if (origin && origin !== request.nextUrl.origin) {
+      return NextResponse.json({ error: "CSRF_ORIGIN_REJECTED" }, { status: 403 });
+    }
+  }
+
+  const session = request.cookies.get("fleur_session")?.value;
+  if (session && verifySessionToken(session)) return NextResponse.next();
+  if (apiPath) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
+  return NextResponse.redirect(new URL("/login", request.url));
 }
-export const config={matcher:["/dashboard/:path*","/companies/:path*","/tasks/:path*"]};
+
+export const config = {
+  matcher: ["/dashboard/:path*", "/companies/:path*", "/tasks/:path*", "/leads/:path*", "/admin/:path*", "/marketing/:path*", "/api/:path*"],
+};

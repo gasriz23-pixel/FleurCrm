@@ -1,14 +1,53 @@
-generator client { provider = "prisma-client-js" }
-datasource db { provider = "postgresql"; url = env("DATABASE_URL") }
+generator client {
+  provider = "prisma-client-js"
+}
 
-enum UserRole { ADMIN COMMERCIAL BACKOFFICE }
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  COMMERCIAL
+  BACKOFFICE
+}
 
 // ADMIN e COMMERCIAL sono operatori full-access; BACKOFFICE è limitato alle funzioni operative.
-enum LeadStatus { NEW CONTACTED QUALIFIED OPPORTUNITY WON LOST }
-enum TaskStatus { TODO IN_PROGRESS DONE CANCELLED }
-enum Priority { LOW MEDIUM HIGH URGENT }
-enum SearchJobStatus { QUEUED RUNNING COMPLETED FAILED CANCELLED }
-enum EnrichmentJobStatus { QUEUED RUNNING COMPLETED FAILED CANCELLED }
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  OPPORTUNITY
+  WON
+  LOST
+}
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+enum SearchJobStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+enum EnrichmentJobStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
 
 model User {
   id String @id @default(cuid())
@@ -21,6 +60,7 @@ model User {
   assignedTasks Task[] @relation("TaskAssignee")
   createdTasks Task[] @relation("TaskCreator")
   auditLogs AuditLog[]
+  campaigns Campaign[] @relation("CampaignCreator")
 }
 
 model Company {
@@ -55,6 +95,7 @@ model Company {
   tasks Task[]
   sources LeadSource[]
   enrichmentJobs EnrichmentJob[]
+  campaignRecipients CampaignRecipient[]
   @@index([city])
   @@index([province])
   @@index([region])
@@ -90,6 +131,7 @@ model LeadSource {
   verifiedAt DateTime?
   rawConfidence Float @default(0)
   createdAt DateTime @default(now())
+  @@unique([companyId, provider, url])
   @@index([companyId])
   @@index([provider])
 }
@@ -101,6 +143,8 @@ model Task {
   status TaskStatus @default(TODO)
   priority Priority @default(MEDIUM)
   dueAt DateTime?
+  recurrenceRule String?
+  nextRunAt DateTime?
   assigneeId String?
   assignee User? @relation("TaskAssignee", fields:[assigneeId], references:[id])
   creatorId String?
@@ -111,6 +155,7 @@ model Task {
   updatedAt DateTime @updatedAt
   @@index([assigneeId,status])
   @@index([dueAt])
+  @@index([nextRunAt])
   @@index([companyId,status])
 }
 
@@ -132,7 +177,27 @@ model SearchJob {
   completedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  chunks SearchJobChunk[]
   @@index([status,createdAt])
+}
+
+model SearchJobChunk {
+  id String @id @default(cuid())
+  searchJobId String
+  searchJob SearchJob @relation(fields:[searchJobId], references:[id], onDelete: Cascade)
+  sequence Int
+  location String
+  status SearchJobStatus @default(QUEUED)
+  progress Int @default(0)
+  found Int @default(0)
+  error String?
+  attempts Int @default(0)
+  startedAt DateTime?
+  completedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([searchJobId,sequence])
+  @@index([searchJobId,status])
 }
 
 model EnrichmentJob {
@@ -163,4 +228,69 @@ model AuditLog {
   createdAt DateTime @default(now())
   @@index([entityType,entityId])
   @@index([userId,createdAt])
+}
+
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  PAUSED
+  FAILED
+}
+
+enum EmailDeliveryStatus {
+  QUEUED
+  SENT
+  OPENED
+  CLICKED
+  BOUNCED
+  FAILED
+  UNSUBSCRIBED
+}
+
+model Campaign {
+  id String @id @default(cuid())
+  name String
+  subject String
+  htmlBody String
+  textBody String?
+  status CampaignStatus @default(DRAFT)
+  scheduledAt DateTime?
+  createdById String
+  createdBy User @relation("CampaignCreator", fields: [createdById], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  recipients CampaignRecipient[]
+  @@index([status, scheduledAt])
+  @@index([createdById, createdAt])
+}
+
+model CampaignRecipient {
+  id String @id @default(cuid())
+  campaignId String
+  companyId String
+  email String
+  status EmailDeliveryStatus @default(QUEUED)
+  providerMessageId String?
+  sentAt DateTime?
+  openedAt DateTime?
+  clickedAt DateTime?
+  error String?
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([campaignId, companyId])
+  @@index([campaignId, status])
+  @@index([companyId, createdAt])
+}
+
+model EmailUnsubscribe {
+  id String @id @default(cuid())
+  email String @unique
+  reason String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

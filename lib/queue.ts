@@ -6,3 +6,5 @@ const defaults={removeOnComplete:100,removeOnFail:100,attempts:3,backoff:{type:"
 
 export const leadSearchQueue = new Queue("lead-search", { connection, defaultJobOptions: defaults });
 export const enrichmentQueue = new Queue("lead-enrichment", { connection, defaultJobOptions: defaults });
+export const emailQueue = new Queue("email-campaign", { connection, defaultJobOptions: defaults });
+export const taskQueue = new Queue("task-recurrence", { connection, defaultJobOptions: defaults });

@@ -5,7 +5,10 @@ const db = new PrismaClient();
 async function syncRole(emailVar: string, role: UserRole) {
   const email = process.env[emailVar]?.trim().toLowerCase();
   if (!email) return;
-  await db.user.updateMany({ where: { email }, data: { role } });
+  const result = await db.user.updateMany({ where: { email }, data: { role } });
+  if (result.count === 0) {
+    console.log(`Utente non trovato: ${email}. Eseguire il bootstrap con la password iniziale.`);
+  }
 }
 
 async function main() {

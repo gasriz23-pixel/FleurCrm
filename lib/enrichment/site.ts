@@ -81,6 +81,12 @@ export async function enrichWebsite(website:string):Promise<EnrichmentResult>{
         await page.goto(current.href,{waitUntil:"domcontentloaded",timeout:15000});
         const html=await page.content();
         const $=cheerio.load(html);
+        if(/sitemap(?:\.xml)?$/i.test(current.pathname)){
+          $("loc").each((_,el)=>{
+            const target=absolute(current.href,$(el).text().trim());
+            if(target)enqueue(target);
+          });
+        }
         const text=$("body").text().replace(/\s+/g," ");
         for(const e of text.match(EMAIL_RE)||[])emails.add(normalizeEmail(e));
         for(const p of text.match(PHONE_RE)||[])phones.add(normalizePhone(p));
@@ -124,9 +130,8 @@ export async function enrichWebsite(website:string):Promise<EnrichmentResult>{
 
     // Sitemap and common legal/contact pages are high-value sources for public business data.
     for(const path of ["/sitemap.xml","/privacy","/privacy-policy","/note-legali","/contatti","/contact-us"]){
-      if(visited.size>=12)break;
       const target=new URL(path,base).toString();
-      if(!visited.has(target))queue.push(target);
+      if(!visited.has(target)&&!queue.includes(target))queue.push(target);
     }
     while(queue.length&&visited.size<16){
       const raw=queue.shift()!;
@@ -136,14 +141,17 @@ export async function enrichWebsite(website:string):Promise<EnrichmentResult>{
       const page=await browser.newPage();
       try{
         await page.goto(current.href,{waitUntil:"domcontentloaded",timeout:10000});
-        const text=(await page.content()).replace(/\s+/g," ");
+        const html=await page.content();
+        const $=cheerio.load(html);
+        if(/sitemap(?:\.xml)?$/i.test(current.pathname)){
+          $("loc").each((_,el)=>{
+            const target=absolute(current.href,$(el).text().trim());
+            if(target)enqueue(target);
+          });
+        }
+        const text=$("body").text().replace(/\s+/g," ");
         for(const e of text.match(EMAIL_RE)||[])emails.add(normalizeEmail(e));
         for(const p of text.match(PHONE_RE)||[])phones.add(normalizePhone(p));
-        const $=cheerio.load(text);
-        for(const a of $("a[href]").toArray()){
-          const target=absolute(current.href,$(a).attr("href")||"");
-          if(target&&/linkedin\.com\/in\//i.test(target)&&!linkedinUrl)linkedinUrl=target;
-        }
       }catch{}finally{await page.close()}
     }
   }finally{await browser.close()}
