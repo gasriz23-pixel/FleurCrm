@@ -23,12 +23,6 @@ const searchSchema = z.object({
     minRating: z.number().finite().min(0).max(5).optional(),
     minCapacity: z.number().finite().int().min(0).max(100000).optional(),
     allItaly: z.boolean().default(false),
-  }).catch({
-    cities: [],
-    regions: [],
-    providerConcurrency: 3,
-    searchConcurrency: 4,
-    allItaly: false,
   }).default({
     cities: [],
     regions: [],
