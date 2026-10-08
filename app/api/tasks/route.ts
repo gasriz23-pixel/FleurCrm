@@ -25,6 +25,15 @@ export async function POST(req: Request) {
   }
   const body = await req.json();
   if (!body.title?.trim()) return NextResponse.json({ error: "Titolo obbligatorio" }, { status: 400 });
+  if (body.recurrenceRule && !["DAILY", "WEEKLY", "MONTHLY"].includes(body.recurrenceRule)) {
+    return NextResponse.json({ error: "Ricorrenza non valida" }, { status: 400 });
+  }
+  if (body.recurrenceRule && !body.dueAt) {
+    return NextResponse.json({ error: "Una attività ricorrente richiede una scadenza" }, { status: 400 });
+  }
+  if (body.dueAt && Number.isNaN(new Date(body.dueAt).getTime())) {
+    return NextResponse.json({ error: "Scadenza non valida" }, { status: 400 });
+  }
   const task = await db.$transaction(async tx => {
     const created = await tx.task.create({
       data: {
