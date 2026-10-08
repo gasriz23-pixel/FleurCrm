@@ -132,7 +132,27 @@ model SearchJob {
   completedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  chunks SearchJobChunk[]
   @@index([status,createdAt])
+}
+
+model SearchJobChunk {
+  id String @id @default(cuid())
+  searchJobId String
+  searchJob SearchJob @relation(fields:[searchJobId], references:[id], onDelete: Cascade)
+  sequence Int
+  location String
+  status SearchJobStatus @default(QUEUED)
+  progress Int @default(0)
+  found Int @default(0)
+  error String?
+  attempts Int @default(0)
+  startedAt DateTime?
+  completedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([searchJobId,sequence])
+  @@index([searchJobId,status])
 }
 
 model EnrichmentJob {
