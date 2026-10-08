@@ -23,10 +23,10 @@
     "bullmq": "latest",
     "cheerio": "latest",
     "ioredis": "latest",
-    "next": "latest",
+    "next": "16.4.0",
     "playwright": "latest",
-    "react": "latest",
-    "react-dom": "latest",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
     "zod": "latest",
     "xlsx": "latest"
   },
