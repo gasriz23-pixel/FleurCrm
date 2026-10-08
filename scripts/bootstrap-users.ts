@@ -4,13 +4,13 @@ import { hashPassword } from "../lib/auth";
 const db = new PrismaClient();
 
 const accounts = [
-  ["GASPARE_EMAIL", "GASPARE_PASSWORD", UserRole.ADMIN],
-  ["GABRIELE_EMAIL", "GABRIELE_PASSWORD", UserRole.ADMIN],
-  ["DESIREE_EMAIL", "DESIREE_PASSWORD", UserRole.BACKOFFICE],
+  ["GASPARE_EMAIL", "GASPARE_PASSWORD", UserRole.ADMIN, "Gaspare"],
+  ["GABRIELE_EMAIL", "GABRIELE_PASSWORD", UserRole.ADMIN, "Gabriele"],
+  ["DESIREE_EMAIL", "DESIREE_PASSWORD", UserRole.BACKOFFICE, "Desiree"],
 ] as const;
 
 async function main() {
-  for (const [emailVar, passwordVar, role] of accounts) {
+  for (const [emailVar, passwordVar, role, name] of accounts) {
     const email = process.env[emailVar]?.trim().toLowerCase();
     const password = process.env[passwordVar];
     if (!email) throw new Error(`Variabile ${emailVar} mancante`);
@@ -22,7 +22,7 @@ async function main() {
     if (existing) {
       await db.user.update({
         where: { id: existing.id },
-        data: { role, passwordHash: hashPassword(password) },
+        data: { name, role, passwordHash: hashPassword(password) },
       });
       console.log(`Aggiornato: ${email}`);
       continue;
@@ -30,7 +30,7 @@ async function main() {
 
     await db.user.create({
       data: {
-        name: role === UserRole.ADMIN ? email.split("@")[0] : email.split("@")[0],
+        name,
         email,
         role,
         passwordHash: hashPassword(password),
