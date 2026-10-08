@@ -90,6 +90,7 @@ model LeadSource {
   verifiedAt DateTime?
   rawConfidence Float @default(0)
   createdAt DateTime @default(now())
+  @@unique([companyId, provider, url])
   @@index([companyId])
   @@index([provider])
 }
