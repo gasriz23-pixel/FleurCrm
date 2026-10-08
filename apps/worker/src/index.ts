@@ -330,7 +330,7 @@ new Worker("email-campaign",async(job)=>{
 
 void emailQueue.waitUntilReady();
 void taskQueue.upsertJobScheduler("recurring-task-scan",{every:60000},{name:"scan",data:{}}).catch(error=>console.error("task scheduler",error));
-\nnew Worker("task-recurrence",async()=>{
+new Worker("task-recurrence",async()=>{
   const now=new Date();
   const tasks=await db.task.findMany({where:{status:"DONE",recurrenceRule:{in:["DAILY","WEEKLY","MONTHLY"]},nextRunAt:{lte:now}},take:100});
   for(const task of tasks){
