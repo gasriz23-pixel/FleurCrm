@@ -53,7 +53,7 @@ export default async function Dashboard() {
           <Link href="/companies" className="rounded-xl border bg-white p-6 shadow-sm hover:border-slate-400">
             <h2 className="font-semibold">CRM Lead</h2>
             <p className="mt-2 text-sm text-slate-500">Cerca, filtra e gestisci le aziende acquisite.</p>
-          </a>
+          </Link>
           <Link href="/leads" className="rounded-xl border bg-white p-6 shadow-sm hover:border-slate-400">
             <h2 className="font-semibold">Ricerca lead</h2>
             <p className="mt-2 text-sm text-slate-500">Avvia ricerche persistenti lato server.</p>
