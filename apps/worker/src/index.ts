@@ -299,6 +299,15 @@ new Worker("email-campaign",async(job)=>{
     html += '<p style="font-size:12px"><a href="'+unsubscribeUrl+'">Disiscriviti</a></p><img src="'+trackingUrl+'" width="1" height="1" alt="" />';
     const result=await sendEmail({to:recipient.email,subject,html,text:recipient.campaign.textBody?renderTemplate(recipient.campaign.textBody,vars):undefined});
     await db.campaignRecipient.update({where:{id:recipient.id},data:{status:"SENT",providerMessageId:result.id??null,sentAt:new Date(),error:null}});
+    const [queued,failed]=await Promise.all([
+      db.campaignRecipient.count({where:{campaignId:recipient.campaignId,status:"QUEUED"}}),
+      db.campaignRecipient.count({where:{campaignId:recipient.campaignId,status:"FAILED"}}),
+    ]);
+    if(queued===0){
+      await db.campaign.update({where:{id:recipient.campaignId},data:{status:failed>0?"FAILED":"SENT"}});
+    } else {
+      await db.campaign.update({where:{id:recipient.campaignId},data:{status:"SENDING"}});
+    }
   }catch(error){
     await db.campaignRecipient.update({where:{id:recipient.id},data:{status:"FAILED",error:error instanceof Error?error.message:"EMAIL_SEND_FAILED"}});
     throw error;
