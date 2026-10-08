@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 type User = { id: string; name: string; role: string };
@@ -121,11 +122,11 @@ export default function Tasks() {
   );
 
   return (
-    <main className="min-h-screen bg-[#f6f7f9] p-4 text-slate-900 md:p-8"><div className="mx-auto mb-5 flex max-w-6xl items-center gap-2 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1 shadow-sm"><a href="/dashboard" className="shrink-0 rounded-lg px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50">Dashboard</a><a href="/companies" className="shrink-0 rounded-lg px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50">Aziende</a><a href="/leads" className="shrink-0 rounded-lg px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50">Lead</a><a href="/tasks" className="shrink-0 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">Attività</a><a href="/marketing" className="shrink-0 rounded-lg px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50">Marketing</a></div>
+    <main className="min-h-screen bg-[#f6f7f9] p-4 text-slate-900 md:p-8"><div className="mx-auto mb-5 flex max-w-6xl items-center gap-2 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1 shadow-sm"><Link href="/dashboard" className="shrink-0 rounded-lg px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50">Dashboard</Link><Link href="/companies" className="shrink-0 rounded-lg px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50">Aziende</Link><Link href="/leads" className="shrink-0 rounded-lg px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50">Lead</Link><Link href="/tasks" className="shrink-0 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">Attività</Link><Link href="/marketing" className="shrink-0 rounded-lg px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50">Marketing</Link></div>
       <div className="mx-auto max-w-6xl">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <a href="/dashboard" className="text-sm text-slate-500 hover:text-slate-900">← Dashboard</a>
+            <Link href="/dashboard" className="text-sm text-slate-500 hover:text-slate-900">← Dashboard</a>
             <h1 className="mt-2 text-3xl font-bold">Attività</h1>
             <p className="mt-2 text-slate-500">Attività condivise tra amministrazione, commerciale e back office.</p>
           </div>
