@@ -60,7 +60,9 @@ async function persistSearchLeads(leads: Awaited<ReturnType<typeof providerRegis
       }
       continue;
     }
-    const created=await db.company.create({data:{
+    let created;
+    try{
+      const created=await db.company.create({data:{
       name:lead.name.trim(),normalizedName:normalize(lead.name),identityKey:key,category:lead.category,
       address:lead.address,city:lead.city,province:lead.province,region:lead.region,cap:lead.cap,
       website:lead.website,normalizedWebsite:website||null,phone:lead.phone,email:lead.email,
@@ -69,6 +71,26 @@ async function persistSearchLeads(leads: Awaited<ReturnType<typeof providerRegis
       linkedinUrl:lead.linkedinUrl,sourceUrl:lead.sourceUrl,lastVerifiedAt:new Date(),confidence
     }});
     for(const source of sources)await db.leadSource.create({data:{companyId:created.id,provider:source.provider,url:source.url,verifiedAt:new Date(),rawConfidence:confidence}});
+    }catch(error){
+      if((error as {code?:string})?.code!=="P2002")throw error;
+      const raced=await db.company.findUnique({where:{identityKey:key}});
+      if(!raced)throw error;
+      created=await db.company.update({where:{id:raced.id},data:{
+        website:raced.website??lead.website,normalizedWebsite:raced.normalizedWebsite??(website||null),
+        phone:raced.phone??lead.phone,email:raced.email??lead.email,address:raced.address??lead.address,
+        city:raced.city??lead.city,province:raced.province??lead.province,region:raced.region??lead.region,
+        cap:raced.cap??lead.cap,category:raced.category??lead.category,rating:raced.rating??lead.rating,
+        reviewCount:raced.reviewCount??lead.reviewCount,roomsOrSeats:raced.roomsOrSeats??lead.roomsOrSeats,
+        decisionMakerName:raced.decisionMakerName??lead.decisionMakerName,
+        decisionMakerRole:raced.decisionMakerRole??lead.decisionMakerRole,
+        linkedinUrl:raced.linkedinUrl??lead.linkedinUrl,lastVerifiedAt:new Date(),
+        confidence:Math.max(raced.confidence,confidence),deletedAt:null
+      }});
+      for(const source of sources){
+        const duplicate=await db.leadSource.findFirst({where:{companyId:raced.id,url:source.url,provider:source.provider}});
+        if(!duplicate)await db.leadSource.create({data:{companyId:raced.id,provider:source.provider,url:source.url,verifiedAt:new Date(),rawConfidence:confidence}});
+      }
+    }
   }
   return unique.length;
 }
