@@ -8,15 +8,16 @@ export default async function Dashboard() {
   if (!user) redirect("/login");
 
   const isBackofficeOnly = user.role === "BACKOFFICE";
-  const [leads, activeSearches, openTasks] = await Promise.all([
+  const [leads, activeSearches, openTasks, campaigns] = await Promise.all([
     isBackofficeOnly ? Promise.resolve(0) : db.company.count({ where: { deletedAt: null } }),
     isBackofficeOnly ? Promise.resolve(0) : db.searchJob.count({ where: { status: { in: ["QUEUED", "RUNNING"] } } }),
     db.task.count({ where: { status: { in: ["TODO", "IN_PROGRESS"] } } }),
+    isBackofficeOnly ? Promise.resolve(0) : db.campaign.count(),
   ]);
 
   const stats = isBackofficeOnly
     ? [["Attività aperte", openTasks]]
-    : [["Lead totali", leads], ["Ricerche attive", activeSearches], ["Attività aperte", openTasks], ["Campagne", 0]];
+    : [["Lead totali", leads], ["Ricerche attive", activeSearches], ["Attività aperte", openTasks], ["Campagne", campaigns]];
 
   return <main className="min-h-screen bg-slate-100 text-slate-900">
     <header className="flex items-center justify-between border-b bg-white px-5 py-4 md:px-8">
@@ -59,6 +60,7 @@ export default async function Dashboard() {
             <p className="mt-2 text-sm text-slate-500">Avvia ricerche persistenti lato server.</p>
           </Link>
         </>}
+        <Link href="/marketing" className="rounded-xl border bg-white p-6 shadow-sm hover:border-slate-400"><h2 className="font-semibold">Email marketing</h2><p className="mt-2 text-sm text-slate-500">Campagne, invio asincrono, tracking e disiscrizioni.</p></Link>
         <Link href="/tasks" className="rounded-xl border bg-white p-6 shadow-sm hover:border-slate-400">
           <h2 className="font-semibold">Back office / Attività</h2>
           <p className="mt-2 text-sm text-slate-500">Gestisci attività, scadenze e assegnazioni condivise.</p>
