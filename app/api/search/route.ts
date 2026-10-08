@@ -89,7 +89,7 @@ export async function POST(req: Request) {
   await leadSearchQueue.add(
     "search",
     {searchJobId: job.id},
-    {removeOnComplete: 100, removeOnFail: 100},
+    {removeOnComplete: 100, removeOnFail: 100, deduplication: {id: "search-" + job.id}},
   );
 
   return NextResponse.json(
