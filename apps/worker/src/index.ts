@@ -277,6 +277,8 @@ new Worker("email-campaign",async(job)=>{
   const recipient=await db.campaignRecipient.findUnique({where:{id:recipientId},include:{campaign:true,company:true}});
   if(!recipient)return;
   if(recipient.status==="UNSUBSCRIBED")return;
+  if(recipient.campaign.status==="PAUSED")return;
+  if(recipient.campaign.status==="SENT")return;
   const blocked=await db.emailUnsubscribe.findUnique({where:{email:recipient.email.toLowerCase()}});
   if(blocked){
     await db.campaignRecipient.update({where:{id:recipient.id},data:{status:"UNSUBSCRIBED",error:"EMAIL_UNSUBSCRIBED"}});
