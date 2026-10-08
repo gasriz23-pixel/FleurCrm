@@ -20,16 +20,21 @@ const searchSchema = z.object({
     regions: list.max(20).default([]),
     providerConcurrency: z.number().finite().int().min(1).max(3).default(3),
     searchConcurrency: z.number().finite().int().min(1).max(8).default(4),
+    minRating: z.number().finite().min(0).max(5).optional(),
+    minCapacity: z.number().finite().int().min(0).max(100000).optional(),
+    allItaly: z.boolean().default(false),
   }).catch({
     cities: [],
     regions: [],
     providerConcurrency: 3,
     searchConcurrency: 4,
+    allItaly: false,
   }).default({
     cities: [],
     regions: [],
     providerConcurrency: 3,
     searchConcurrency: 4,
+    allItaly: false,
   }),
 });
 
@@ -63,6 +68,9 @@ export async function POST(req: Request) {
     ...filters,
     cities: filters.cities.slice(0, 500),
     regions: filters.regions.slice(0, 20),
+    minRating: filters.minRating,
+    minCapacity: filters.minCapacity,
+    allItaly: filters.allItaly || filters.regions.length >= 20,
   };
 
   const job = await db.searchJob.create({
