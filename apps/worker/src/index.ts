@@ -6,7 +6,7 @@ import {dedupeLeads, normalizeWebsite} from "../../../lib/search/dedupe";
 import {enrichWebsite} from "../../../lib/enrichment/site";
 import {loadItalianMunicipalities} from "../../../lib/search/istat-municipalities";
 import {buildSearchScopes} from "../../../lib/search/scopes";
-import {emailQueue} from "../../../lib/queue";
+import {emailQueue,taskQueue} from "../../../lib/queue";
 import {renderTemplate,sendEmail} from "../../../lib/email/provider";
 import {createRecipientToken,createUnsubscribeToken} from "../../../lib/marketing/tokens";
 
@@ -329,6 +329,7 @@ new Worker("email-campaign",async(job)=>{
 },{connection,concurrency:5,limiter:{max:5,duration:1000}});
 
 void emailQueue.waitUntilReady();
+void taskQueue.upsertJobScheduler("recurring-task-scan",{every:60000},{name:"scan",data:{}}).catch(error=>console.error("task scheduler",error));
 \nnew Worker("task-recurrence",async()=>{
   const now=new Date();
   const tasks=await db.task.findMany({where:{status:"DONE",recurrenceRule:{in:["DAILY","WEEKLY","MONTHLY"]},nextRunAt:{lte:now}},take:100});
