@@ -42,7 +42,7 @@ export class ProviderRegistry{
       try{
         const leads=await p.search(location);
         results[i]=leads.map(x=>({...x,provider:x.provider??p.name,providers:x.providers??[x.provider??p.name]}));
-      }catch(error){ if(error instanceof ProviderRateLimitError){ await new Promise(resolve=>setTimeout(resolve,Math.min(error.retryAfterMs,30000))); try{ const leads=await p.search(location); results[i]=leads.map(x=>({...x,provider:x.provider??p.name,providers:x.providers??[x.provider??p.name]})); }catch{ results[i]=[]; } } else results[i]=[]; }
+      }catch(error){ if(error instanceof ProviderRateLimitError){ await new Promise(resolve=>setTimeout(resolve,Math.min(error.retryAfterMs,30000))); try{ const leads=await p.search(location); results[i]=leads.map(x=>({...x,provider:x.provider??p.name,providers:x.providers??[x.provider??p.name]})); }catch(error){ if(error instanceof ProviderRateLimitError) throw error; results[i]=[]; } } else results[i]=[]; }
     }};
     await Promise.all(Array.from({length:Math.min(concurrency,tasks.length)},()=>run()));
     return results.flat();
