@@ -37,6 +37,7 @@ new Worker("lead-search",async(job)=>{
   if(!s)return;
   try{
     await db.searchJob.update({where:{id:s.id},data:{status:"RUNNING",startedAt:new Date(),progress:5,error:null}});
+    await db.searchJob.update({where:{id:s.id},data:{progress:10}});
     const candidates=await providerRegistry.searchAll({
       query:s.query,city:s.city??undefined,province:s.province??undefined,region:s.region??undefined,
       cap:s.cap??undefined,radiusKm:s.radiusKm??undefined,
