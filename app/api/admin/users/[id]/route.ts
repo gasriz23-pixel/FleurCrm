@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { db } from "../../../../lib/db";
-import { hashPassword } from "../../../../lib/auth";
-import { requireUser } from "../../../../lib/permissions";
+import { db } from "../../../../../lib/db";
+import { hashPassword } from "../../../../../lib/auth";
+import { requireUser } from "../../../../../lib/permissions";
 import { UserRole } from "@prisma/client";
 
 const roles = new Set(Object.values(UserRole));
