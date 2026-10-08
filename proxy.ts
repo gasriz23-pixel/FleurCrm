@@ -4,6 +4,7 @@ import { verifySessionToken } from "./lib/auth";
 
 const protectedPrefixes = ["/dashboard", "/companies", "/tasks", "/leads", "/admin"];
 const apiPrefixes = ["/api"];
+const stateChangingMethods = new Set(["POST","PUT","PATCH","DELETE"]);
 
 export function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
@@ -13,6 +14,13 @@ export function proxy(request: NextRequest) {
 
   if (publicApi) return NextResponse.next();
   if (!protectedPath && !apiPath) return NextResponse.next();
+
+  if (apiPath && stateChangingMethods.has(request.method)) {
+    const origin = request.headers.get("origin");
+    if (origin && origin !== request.nextUrl.origin) {
+      return NextResponse.json({ error: "CSRF_ORIGIN_REJECTED" }, { status: 403 });
+    }
+  }
 
   const session = request.cookies.get("fleur_session")?.value;
   if (session && verifySessionToken(session)) return NextResponse.next();
