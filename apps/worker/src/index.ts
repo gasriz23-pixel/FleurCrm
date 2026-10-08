@@ -142,7 +142,16 @@ new Worker("lead-enrichment",async(job)=>{
         decisionMakerRole:j.company.decisionMakerRole??result.decisionMakerRole,
         roomsOrSeats:j.company.roomsOrSeats??result.roomsOrSeats,confidence:Math.max(j.company.confidence,result.confidence),lastVerifiedAt:new Date()
       }});
-      for(const contact of result.contacts){\n        if(!contact.name&&!contact.email&&!contact.phone)continue;\n        const existingContact=await tx.contact.findFirst({where:{companyId:j.companyId,OR:[...(contact.email?[{email:contact.email}]:[]),...(contact.name?[{name:contact.name}]:[])]}});\n        if(existingContact){\n          await tx.contact.update({where:{id:existingContact.id},data:{name:existingContact.name??contact.name,role:existingContact.role??contact.role,email:existingContact.email??contact.email,phone:existingContact.phone??contact.phone,linkedinUrl:existingContact.linkedinUrl??contact.linkedinUrl}});\n        }else{\n          await tx.contact.create({data:{companyId:j.companyId,name:contact.name,role:contact.role,email:contact.email,phone:contact.phone,linkedinUrl:contact.linkedinUrl}});\n        }\n      }\n      for(const url of result.sourceUrls)await tx.leadSource.create({data:{
+      for(const contact of result.contacts){
+        if(!contact.name&&!contact.email&&!contact.phone)continue;
+        const existingContact=await tx.contact.findFirst({where:{companyId:j.companyId,OR:[...(contact.email?[{email:contact.email}]:[]),...(contact.name?[{name:contact.name}]:[])]}});
+        if(existingContact){
+          await tx.contact.update({where:{id:existingContact.id},data:{name:existingContact.name??contact.name,role:existingContact.role??contact.role,email:existingContact.email??contact.email,phone:existingContact.phone??contact.phone,linkedinUrl:existingContact.linkedinUrl??contact.linkedinUrl}});
+        }else{
+          await tx.contact.create({data:{companyId:j.companyId,name:contact.name,role:contact.role,email:contact.email,phone:contact.phone,linkedinUrl:contact.linkedinUrl}});
+        }
+      }
+      for(const url of result.sourceUrls)await tx.leadSource.create({data:{
         companyId:j.companyId,provider:"website-enrichment",url,verifiedAt:new Date(),rawConfidence:result.confidence
       }});
       await tx.auditLog.create({data:{entityType:"Company",entityId:j.companyId,action:"ENRICHED",payload:result}});
