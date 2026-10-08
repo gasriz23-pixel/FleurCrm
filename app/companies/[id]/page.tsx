@@ -1,14 +1,14 @@
 "use client";
 import Link from "next/link";
-import {useEffect,useState} from "react";
+import {useCallback,useEffect,useState} from "react";
 
 type Company={id:string;name:string;category?:string|null;address?:string|null;city?:string|null;province?:string|null;region?:string|null;cap?:string|null;website?:string|null;phone?:string|null;email?:string|null;status:string;rating?:number|null;reviewCount?:number|null;roomsOrSeats?:number|null;decisionMakerName?:string|null;decisionMakerRole?:string|null;linkedinUrl?:string|null;confidence:number;lastVerifiedAt?:string|null;contacts:{id:string;name?:string|null;role?:string|null;email?:string|null;phone?:string|null}[];sources:{id:string;provider:string;url?:string|null;verifiedAt?:string|null}[];tasks:{id:string;title:string;status:string;priority:string;assignee?:{name:string}|null}[]};
 const fields=["name","category","address","city","province","region","cap","website","phone","email","status","decisionMakerName","decisionMakerRole","linkedinUrl"] as const;
 
 export default function CompanyDetail({params}:{params:{id:string}}){
  const[company,setCompany]=useState<Company|null>(null),[form,setForm]=useState<Record<string,string>>({}),[message,setMessage]=useState(""),[enriching,setEnriching]=useState(false),[enrichJob,setEnrichJob]=useState<any>(null);
- async function load(){const r=await fetch("/api/companies/"+params.id,{cache:"no-store"});if(r.ok){const d=await r.json();setCompany(d);setForm(Object.fromEntries(fields.map(k=>[k,String(d[k]??"")])))}} 
- useEffect(()=>{load()},[params.id]);
+ const load=useCallback(async ()=>{const r=await fetch("/api/companies/"+params.id,{cache:"no-store"});if(r.ok){const d=await r.json();setCompany(d);setForm(Object.fromEntries(fields.map(k=>[k,String(d[k]??"")])))}}},[params.id]); 
+ useEffect(()=>{void load()},[load]);
  async function save(){const r=await fetch("/api/companies/"+params.id,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify(form)});setMessage(r.ok?"Salvato":"Errore nel salvataggio");if(r.ok)await load()}
  async function enrich(){setMessage("");setEnriching(true);const r=await fetch("/api/companies/"+params.id+"/enrich",{method:"POST"});if(!r.ok){setMessage((await r.json()).error||"Errore enrichment");setEnriching(false);return}const j=await r.json();setEnrichJob(j);poll(j.id)}
  async function poll(id:string){const r=await fetch("/api/enrichment/"+id,{cache:"no-store"});if(!r.ok){setEnriching(false);return}const j=await r.json();setEnrichJob(j);if(j.status==="QUEUED"||j.status==="RUNNING"){setTimeout(()=>poll(id),1500)}else{setEnriching(false);await load();setMessage(j.status==="COMPLETED"?"Enrichment completato":"Enrichment terminato con errore")}}
