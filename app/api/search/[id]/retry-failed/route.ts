@@ -14,7 +14,6 @@ export async function POST(_: Request, {params}: {params: {id: string}}) {
   }
 
   const job = await db.searchJob.findUnique({where: {id: params.id}});
-
   if (!job) return NextResponse.json({error: "not found"}, {status: 404});
 
   if (job.status === "RUNNING") {
@@ -50,7 +49,11 @@ export async function POST(_: Request, {params}: {params: {id: string}}) {
     },
   });
 
-  await leadSearchQueue.add("retry-failed-search", {searchJobId: params.id});
+  await leadSearchQueue.add(
+    "retry-failed-search",
+    {searchJobId: params.id},
+    {deduplication: {id: `search-${params.id}`}},
+  );
 
   return NextResponse.json({jobId: params.id, retried: failed.length});
 }
