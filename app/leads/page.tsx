@@ -38,3 +38,4 @@ export default function LeadsPage() {
       {job.error&&<p className="rounded bg-red-50 p-3 text-red-700">{job.error}</p>}
     </div>}</section>
   </div></main></>
+);
