@@ -31,6 +31,8 @@ export async function POST(req: Request) {
         title: body.title.trim(), description: body.description || null,
         priority: body.priority || "MEDIUM", status: body.status || "TODO",
         dueAt: body.dueAt ? new Date(body.dueAt) : null,
+        recurrenceRule: body.recurrenceRule || null,
+        nextRunAt: body.dueAt && body.recurrenceRule ? new Date(body.dueAt) : null,
         assigneeId: body.assigneeId || null, creatorId: user.id, companyId: body.companyId || null,
       },
       include: { assignee: true, company: true },
