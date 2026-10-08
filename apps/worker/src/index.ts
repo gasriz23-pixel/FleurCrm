@@ -6,6 +6,8 @@ import {dedupeLeads, normalizeWebsite} from "../../../lib/search/dedupe";
 import {enrichWebsite} from "../../../lib/enrichment/site";
 import {loadItalianMunicipalities} from "../../../lib/search/istat-municipalities";
 import {buildSearchScopes} from "../../../lib/search/scopes";
+import {emailQueue} from "../../../lib/queue";
+import {renderTemplate,sendEmail} from "../../../lib/email/provider";
 
 const connection=new IORedis(process.env.REDIS_URL??"redis://localhost:6379",{maxRetriesPerRequest:null});
 
@@ -268,3 +270,39 @@ new Worker("lead-enrichment",async(job)=>{
 },{connection,concurrency:2,limiter:{max:2,duration:1000}});
 
 console.log("FleurCrm worker online");
+
+
+new Worker("email-campaign",async(job)=>{
+  const recipientId=String(job.data.recipientId);
+  const recipient=await db.campaignRecipient.findUnique({where:{id:recipientId},include:{campaign:true,company:true}});
+  if(!recipient)return;
+  if(recipient.status==="UNSUBSCRIBED")return;
+  const blocked=await db.emailUnsubscribe.findUnique({where:{email:recipient.email.toLowerCase()}});
+  if(blocked){
+    await db.campaignRecipient.update({where:{id:recipient.id},data:{status:"UNSUBSCRIBED",error:"EMAIL_UNSUBSCRIBED"}});
+    return;
+  }
+  try{
+    const baseUrl=process.env.NEXT_PUBLIC_APP_URL||"http://localhost:3000";
+    const vars={
+      nome:recipient.company.decisionMakerName||"",
+      azienda:recipient.company.name,
+      citta:recipient.company.city||"",
+      categoria:recipient.company.category||"",
+      email:recipient.email
+    };
+    const subject=renderTemplate(recipient.campaign.subject,vars);
+    let html=renderTemplate(recipient.campaign.htmlBody,vars);
+    const unsubscribeUrl=baseUrl+"/api/marketing/unsubscribe?email="+encodeURIComponent(recipient.email);
+    const trackingUrl=baseUrl+"/api/marketing/track/open/"+recipient.id;
+    html=html.replace(/href=["'](https?:\/\/[^"']+)["']/gi,(_,href:string)=>'href="'+baseUrl+"/api/marketing/track/click/"+recipient.id+"?url="+encodeURIComponent(href)+'"');
+    html += '<p style="font-size:12px"><a href="'+unsubscribeUrl+'">Disiscriviti</a></p><img src="'+trackingUrl+'" width="1" height="1" alt="" />';
+    const result=await sendEmail({to:recipient.email,subject,html,text:recipient.campaign.textBody?renderTemplate(recipient.campaign.textBody,vars):undefined});
+    await db.campaignRecipient.update({where:{id:recipient.id},data:{status:"SENT",providerMessageId:result.id??null,sentAt:new Date(),error:null}});
+  }catch(error){
+    await db.campaignRecipient.update({where:{id:recipient.id},data:{status:"FAILED",error:error instanceof Error?error.message:"EMAIL_SEND_FAILED"}});
+    throw error;
+  }
+},{connection,concurrency:5,limiter:{max:5,duration:1000}});
+
+void emailQueue.waitUntilReady();
