@@ -4,7 +4,7 @@ import type {LeadCandidate,LeadProvider,LeadSearchInput} from "./providers";
 const typeMap:Record<string,string|undefined>={
   Hotel:"hotel", Ristorante:"restaurant", Pizzeria:"restaurant",
   "B&B":"bed_and_breakfast", Affittacamere:"guest_house",
-  Studentato:"student_dormitory", Motel:"motel",
+  // Google Places does not expose a stable includedType for student residences; use text search only.\n  Studentato:undefined, Motel:"motel",
 };
 const sleep=(ms:number)=>new Promise(resolve=>setTimeout(resolve,ms));
 function locations(input:LeadSearchInput){
