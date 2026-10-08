@@ -127,7 +127,7 @@ export default function Tasks() {
       <div className="mx-auto max-w-6xl">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <Link href="/dashboard" className="text-sm text-slate-500 hover:text-slate-900">← Dashboard</a>
+            <Link href="/dashboard" className="text-sm text-slate-500 hover:text-slate-900">← Dashboard</Link>
             <h1 className="mt-2 text-3xl font-bold">Attività</h1>
             <p className="mt-2 text-slate-500">Attività condivise tra amministrazione, commerciale e back office.</p>
           </div>
