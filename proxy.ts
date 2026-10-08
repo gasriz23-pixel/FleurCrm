@@ -1,5 +1,5 @@
 import {NextResponse} from "next/server";
-import type {NextRequest} from "next/server";
+import type {NextRequest} from "next/server";\nimport {verifySessionToken} from "./lib/auth";
 
 const protectedPrefixes=["/dashboard","/companies","/tasks","/leads","/admin"];
 const apiPrefixes=["/api"];
@@ -12,7 +12,7 @@ export function proxy(request:NextRequest){
  if(publicApi)return NextResponse.next();
  if(!protectedPath&&!apiPath)return NextResponse.next();
  const session=request.cookies.get("fleur_session")?.value;
- if(session)return NextResponse.next();
+ if(session && verifySessionToken(session))return NextResponse.next();
  if(apiPath)return NextResponse.json({error:"UNAUTHENTICATED"},{status:401});
  return NextResponse.redirect(new URL("/login",request.url));
 }
