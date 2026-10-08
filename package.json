@@ -28,7 +28,8 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "zod": "latest",
-    "xlsx": "latest"
+    "xlsx": "latest",
+    "tailwindcss": "3.4.17"
   },
   "devDependencies": {
     "@types/node": "latest",
@@ -39,8 +40,7 @@
     "typescript": "latest",
     "vitest": "latest",
     "eslint": "latest",
-    "eslint-config-next": "16.4.0",
-    "tailwindcss": "latest"
+    "eslint-config-next": "16.4.0"
   },
   "engines": {
     "node": ">=22.18.0"
