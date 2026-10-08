@@ -25,6 +25,7 @@ export default function Tasks() {
   const [assigneeId, setAssigneeId] = useState("");
   const [priority, setPriority] = useState("MEDIUM");
   const [dueAt, setDueAt] = useState("");
+  const [recurrenceRule, setRecurrenceRule] = useState("");
   const [statusFilter, setStatusFilter] = useState("OPEN");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -66,6 +67,7 @@ export default function Tasks() {
           assigneeId: assigneeId || null,
           priority,
           dueAt: dueAt || null,
+          recurrenceRule: recurrenceRule || null,
         }),
       });
       if (!response.ok) {
@@ -77,6 +79,7 @@ export default function Tasks() {
       setAssigneeId("");
       setPriority("MEDIUM");
       setDueAt("");
+      setRecurrenceRule("");
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Errore di salvataggio");
@@ -154,6 +157,12 @@ export default function Tasks() {
               {priorities.map((value) => <option key={value}>{value}</option>)}
             </select>
             <input type="datetime-local" value={dueAt} onChange={(e) => setDueAt(e.target.value)} className="rounded-lg border p-2 md:col-span-2" />
+            <select value={recurrenceRule} onChange={(e) => setRecurrenceRule(e.target.value)} className="rounded-lg border p-2">
+              <option value="">Nessuna ricorrenza</option>
+              <option value="DAILY">Ogni giorno</option>
+              <option value="WEEKLY">Ogni settimana</option>
+              <option value="MONTHLY">Ogni mese</option>
+            </select>
             <button
               onClick={() => void createTask()}
               disabled={!title.trim() || saving}
@@ -169,6 +178,7 @@ export default function Tasks() {
           <div className="flex flex-col gap-3 border-b p-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="font-semibold">Elenco attività</h2>
+              <div className="text-xs text-slate-500">Le attività scadute restano evidenziate come promemoria operativo.</div>
               <p className="text-sm text-slate-500">{visibleTasks.length} attività visualizzate</p>
             </div>
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="rounded-lg border p-2 text-sm">
