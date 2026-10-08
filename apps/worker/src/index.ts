@@ -65,7 +65,7 @@ async function persistSearchLeads(leads: Awaited<ReturnType<typeof providerRegis
       }
       continue;
     }
-    let created;
+    let created: Awaited<ReturnType<typeof db.company.create>>;
     try{
       created=await db.company.create({data:{
         name:lead.name.trim(),normalizedName:normalize(lead.name),identityKey:key,category:lead.category,
