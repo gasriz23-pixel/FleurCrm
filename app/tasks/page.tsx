@@ -163,7 +163,7 @@ export default function Tasks() {
               {priorities.map((value) => <option key={value}>{value}</option>)}
             </select>
             <input type="datetime-local" value={dueAt} onChange={(e) => setDueAt(e.target.value)} className="rounded-lg border p-2 md:col-span-2" />
-            <select value={recurrenceRule} onChange={(e) => setRecurrenceRule(e.target.value)} className="rounded-lg border p-2">
+            <select value={recurrenceRule} onChange={(e) => setRecurrenceRule(e.target.value)} disabled={!dueAt} className="rounded-lg border p-2 disabled:cursor-not-allowed disabled:bg-slate-100">
               <option value="">Nessuna ricorrenza</option>
               <option value="DAILY">Ogni giorno</option>
               <option value="WEEKLY">Ogni settimana</option>
@@ -207,7 +207,7 @@ export default function Tasks() {
                   {task.company?.name || "Nessun lead collegato"}
                   {task.dueAt ? " · Scadenza " + new Date(task.dueAt).toLocaleString("it-IT") : ""}
                   {task.dueAt && new Date(task.dueAt).getTime() < Date.now() && task.status !== "DONE" && task.status !== "CANCELLED" && <span className="ml-2 font-semibold text-amber-700">SCADUTA</span>}
-                  {task.recurrenceRule && <span className="ml-2 font-medium text-slate-600">↻ {task.recurrenceRule === "DAILY" ? "Giornaliera" : task.recurrenceRule === "WEEKLY" ? "Settimanale" : "Mensile"}</span>}
+                  {task.recurrenceRule && <span className="ml-2 font-medium text-slate-600">↻ {task.recurrenceRule === "DAILY" ? "Giornaliera" : task.recurrenceRule === "WEEKLY" ? "Settimanale" : "Mensile"}{task.nextRunAt ? " · Prossima " + new Date(task.nextRunAt).toLocaleString("it-IT") : ""}</span>}
                 </div>
               </div>
               <select
