@@ -4,6 +4,7 @@ import {db} from "../../../lib/db";
 import {providerRegistry} from "../../../lib/search/registry";
 import {dedupeLeads, normalizeWebsite} from "../../../lib/search/dedupe";
 import {enrichWebsite} from "../../../lib/enrichment/site";
+import {loadItalianMunicipalities} from "../../../lib/search/istat-municipalities";
 
 const connection=new IORedis(process.env.REDIS_URL??"redis://localhost:6379",{maxRetriesPerRequest:null});
 
@@ -79,7 +80,9 @@ new Worker("lead-search",async(job)=>{
     const f=(s.filters&&typeof s.filters==="object"?s.filters:{}) as Record<string,unknown>;
     const cities=Array.isArray(f.cities)?f.cities.map(String).map(x=>x.trim()).filter(Boolean):[];
     const regions=Array.isArray(f.regions)?f.regions.map(String).map(x=>x.trim()).filter(Boolean):[];
-    const locations=cities.length?cities:regions;
+    const allItaly=Boolean(f.allItaly)||regions.length>=20;
+    const municipalityScopes=allItaly?await loadItalianMunicipalities():[];
+    const locations=cities.length?cities:(allItaly?municipalityScopes.map(x=>x.name):regions);
     const scopes=locations.length?locations:[s.city??s.province??s.region??s.cap??"default"];
     const existing=await db.searchJobChunk.findMany({where:{searchJobId:s.id},orderBy:{sequence:"asc"}});
     if(!existing.length)for(let i=0;i<scopes.length;i++)await db.searchJobChunk.create({data:{searchJobId:s.id,sequence:i,location:scopes[i]}});
