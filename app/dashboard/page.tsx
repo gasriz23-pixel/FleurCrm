@@ -58,6 +58,14 @@ export default async function Dashboard() {
       </aside>
 
       <div className="lg:pl-64">
+        <div className="flex items-center gap-2 border-b border-slate-200 bg-white px-4 py-3 lg:hidden">
+          <div className="grid h-9 w-9 place-items-center rounded-xl bg-emerald-600 text-sm font-black text-white">F</div>
+          <span className="font-bold tracking-tight">FleurCRM</span>
+          <span className="ml-auto text-xs font-medium text-slate-400">{user.role}</span>
+        </div>
+        <nav className="flex gap-1 overflow-x-auto border-b border-slate-200 bg-white px-3 py-2 lg:hidden">
+          {nav.filter(item=>!isBackofficeOnly || ["/dashboard","/tasks"].includes(item.href)).map(item=><Link key={item.href} href={item.href} className={item.href==="/dashboard" ? "shrink-0 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700" : "shrink-0 rounded-lg px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50"}>{item.icon} <span className="ml-1">{item.label}</span></Link>)}
+        </nav>
         <header className="sticky top-0 z-10 flex h-20 items-center justify-between border-b border-slate-200/80 bg-white/90 px-5 backdrop-blur md:px-8">
           <div><p className="text-xs font-semibold uppercase tracking-wider text-emerald-600">Workspace</p><h1 className="text-xl font-bold tracking-tight text-slate-900">Dashboard</h1></div>
           <div className="flex items-center gap-3">
