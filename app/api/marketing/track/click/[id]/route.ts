@@ -1,5 +1,5 @@
 import {NextResponse} from "next/server";
-import {db} from "@/lib/db";
+import {db} from "../../../../../../lib/db";
 
 export async function GET(req:Request,{params}:{params:Promise<{id:string}>}){
   const url=new URL(req.url).searchParams.get("url");
