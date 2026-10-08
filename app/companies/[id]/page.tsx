@@ -8,7 +8,7 @@ const fields=["name","category","address","city","province","region","cap","webs
 export default function CompanyDetail({params}:{params:{id:string}}){
  const[company,setCompany]=useState<Company|null>(null),[form,setForm]=useState<Record<string,string>>({}),[message,setMessage]=useState(""),[enriching,setEnriching]=useState(false),[enrichJob,setEnrichJob]=useState<any>(null);
  const load=useCallback(async ()=>{const r=await fetch("/api/companies/"+params.id,{cache:"no-store"});if(r.ok){const d=await r.json();setCompany(d);setForm(Object.fromEntries(fields.map(k=>[k,String(d[k]??"")])))}}},[params.id]); 
- useEffect(()=>{void load()},[load]);
+ const load=useCallback(async ()=>{const r=await fetch("/api/companies/"+params.id,{cache:"no-store"});if(r.ok){const d=await r.json();setCompany(d);setForm(Object.fromEntries(fields.map(k=>[k,String(d[k]??"")])));}},[params.id]);
  async function save(){const r=await fetch("/api/companies/"+params.id,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify(form)});setMessage(r.ok?"Salvato":"Errore nel salvataggio");if(r.ok)await load()}
  async function enrich(){setMessage("");setEnriching(true);const r=await fetch("/api/companies/"+params.id+"/enrich",{method:"POST"});if(!r.ok){setMessage((await r.json()).error||"Errore enrichment");setEnriching(false);return}const j=await r.json();setEnrichJob(j);poll(j.id)}
  async function poll(id:string){const r=await fetch("/api/enrichment/"+id,{cache:"no-store"});if(!r.ok){setEnriching(false);return}const j=await r.json();setEnrichJob(j);if(j.status==="QUEUED"||j.status==="RUNNING"){setTimeout(()=>poll(id),1500)}else{setEnriching(false);await load();setMessage(j.status==="COMPLETED"?"Enrichment completato":"Enrichment terminato con errore")}}
