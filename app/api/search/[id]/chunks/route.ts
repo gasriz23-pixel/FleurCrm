@@ -2,6 +2,16 @@ import {NextResponse} from "next/server";
 import {requireArea} from "../../../../../lib/permissions";
 import {db} from "../../../../../lib/db";
 
+const emptyStats = {
+  total: 0,
+  queued: 0,
+  running: 0,
+  completed: 0,
+  failed: 0,
+  cancelled: 0,
+  leadsFound: 0,
+};
+
 export async function GET(_: Request, {params}: {params: {id: string}}) {
   try {
     await requireArea("SEARCH");
@@ -12,8 +22,34 @@ export async function GET(_: Request, {params}: {params: {id: string}}) {
     );
   }
 
-  const chunks = await db.searchJobChunk.findMany({
+  const grouped = await db.searchJobChunk.groupBy({
+    by: ["status"],
     where: {searchJobId: params.id},
+    _count: {_all: true},
+    _sum: {found: true},
+  });
+
+  const stats = grouped.reduce(
+    (acc, group) => {
+      const status = group.status.toLowerCase() as
+        | "queued"
+        | "running"
+        | "completed"
+        | "failed"
+        | "cancelled";
+      acc.total += group._count._all;
+      acc[status] += group._count._all;
+      acc.leadsFound += group._sum.found ?? 0;
+      return acc;
+    },
+    {...emptyStats},
+  );
+
+  const chunks = await db.searchJobChunk.findMany({
+    where: {
+      searchJobId: params.id,
+      status: {in: ["RUNNING", "FAILED"]},
+    },
     orderBy: {sequence: "asc"},
     select: {
       id: true,
@@ -29,15 +65,8 @@ export async function GET(_: Request, {params}: {params: {id: string}}) {
     },
   });
 
-  const stats = chunks.reduce(
-    (acc, chunk) => {
-      acc.total += 1;
-      acc[chunk.status.toLowerCase() as "queued" | "running" | "completed" | "failed" | "cancelled"] += 1;
-      acc.leadsFound += chunk.found;
-      return acc;
-    },
-    {total: 0, queued: 0, running: 0, completed: 0, failed: 0, cancelled: 0, leadsFound: 0},
+  return NextResponse.json(
+    {stats, chunks},
+    {headers: {"Cache-Control": "no-store"}},
   );
-
-  return NextResponse.json({stats, chunks});
 }
