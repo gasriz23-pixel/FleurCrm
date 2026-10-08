@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import CrmSidebar from "../../components/crm-sidebar";
 import { useEffect, useMemo, useState } from "react";
 
 type User = { id: string; name: string; role: string };
@@ -122,7 +123,7 @@ export default function Tasks() {
   );
 
   return (
-    <main className="min-h-screen bg-[#f6f7f9] p-4 text-slate-900 md:p-8"><div className="mx-auto mb-5 flex max-w-6xl items-center gap-2 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1 shadow-sm"><Link href="/dashboard" className="shrink-0 rounded-lg px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50">Dashboard</Link><Link href="/companies" className="shrink-0 rounded-lg px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50">Aziende</Link><Link href="/leads" className="shrink-0 rounded-lg px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50">Lead</Link><Link href="/tasks" className="shrink-0 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">Attività</Link><Link href="/marketing" className="shrink-0 rounded-lg px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50">Marketing</Link></div>
+    <><CrmSidebar/><main className="min-h-screen bg-[#f6f7f9] p-4 text-slate-900 md:p-8 md:pl-72">
       <div className="mx-auto max-w-6xl">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -256,6 +257,4 @@ export default function Tasks() {
           {!loading && !visibleTasks.length && <div className="p-8 text-center text-slate-500">Nessuna attività in questa vista.</div>}
         </section>
       </div>
-    </main>
-  );
-}
+    </main></>
