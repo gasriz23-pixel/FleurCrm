@@ -19,7 +19,7 @@
     "auth:bootstrap": "tsx scripts/bootstrap-users.ts"
   },
   "dependencies": {
-    "@prisma/client": "7.10.0",
+    "@prisma/client": "6.19.0",
     "bullmq": "latest",
     "cheerio": "latest",
     "ioredis": "latest",
@@ -34,7 +34,7 @@
     "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
-    "prisma": "7.10.0",
+    "prisma": "6.19.0",
     "tsx": "latest",
     "typescript": "latest",
     "vitest": "latest",
