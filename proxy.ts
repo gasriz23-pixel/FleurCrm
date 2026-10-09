@@ -10,7 +10,7 @@ export function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const protectedPath = protectedPrefixes.some((prefix) => path === prefix || path.startsWith(prefix + "/"));
   const apiPath = apiPrefixes.some((prefix) => path === prefix || path.startsWith(prefix + "/"));
-  const publicApi = path === "/api/auth/login" || path.startsWith("/api/marketing/track/") || path === "/api/marketing/unsubscribe";
+  const publicApi = path === "/api/auth/login" || path === "/api/auth/bootstrap-admin" || path.startsWith("/api/marketing/track/") || path === "/api/marketing/unsubscribe";
 
   if (publicApi) return NextResponse.next();
   if (!protectedPath && !apiPath) return NextResponse.next();
