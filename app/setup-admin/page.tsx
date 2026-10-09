@@ -44,7 +44,7 @@ export default function SetupAdminPage() {
         <div><h1 className="font-bold">FleurCRM</h1><p className="text-xs text-slate-500">Configurazione account amministratore</p></div>
       </div>
       <h2 className="text-2xl font-bold">Crea la tua password</h2>
-      <p className="mt-2 text-sm leading-6 text-slate-600">L'account amministratore sarà associato a gasriz23@gmail.com. Usa una password unica di almeno 12 caratteri.</p>
+      <p className="mt-2 text-sm leading-6 text-slate-600">L&apos;account amministratore sarà associato a gasriz23@gmail.com. Usa una password unica di almeno 12 caratteri.</p>
       <form onSubmit={submit} className="mt-6 space-y-4">
         <label className="block text-sm font-medium">Nuova password
           <input type="password" autoComplete="new-password" required minLength={12} value={password} onChange={e => setPassword(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-emerald-500" />
