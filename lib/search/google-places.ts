@@ -3,18 +3,19 @@ import type {LeadCandidate,LeadProvider,LeadSearchInput} from "./providers";
 
 const typeMap:Record<string,string|undefined>={Hotel:"hotel",Ristorante:"restaurant",Pizzeria:"restaurant","B&B":"bed_and_breakfast",Affittacamere:"guest_house",Studentato:undefined,Motel:"motel"};
 const sleep=(ms:number)=>new Promise(resolve=>setTimeout(resolve,ms));
-function locations(input:LeadSearchInput){const values=[input.city,input.cap,input.province,input.region].filter(Boolean) as string[];const unique=[...new Set(values)];return unique.length?unique:[input.query];}
+function locations(input:LeadSearchInput){const values=[input.city,input.cap,input.province,input.region].filter(Boolean) as string[];const unique=[...new Set(values)];return unique.length?unique:[String(input.filters?.searchTerm??"").trim()?"Italia":input.query];}
 export class GooglePlacesProvider implements LeadProvider{
   name="google-places";
   async search(input:LeadSearchInput):Promise<LeadCandidate[]>{
     const key=process.env.GOOGLE_MAPS_API_KEY;if(!key)return [];
+    const searchTerm=String(input.filters?.searchTerm??"").trim();
     const categories=input.categories?.length?input.categories:Object.keys(typeMap);
     const out:LeadCandidate[]=[];const seen=new Set<string>();
     for(const category of categories)for(const location of locations(input)){
       let pageToken:string|undefined;
       for(let page=0;page<3;page++){
-        const body:Record<string,unknown>={textQuery:[category,location].filter(Boolean).join(" "),languageCode:"it",regionCode:"IT",pageSize:20};
-        const includedType=typeMap[category];if(includedType)body.includedType=includedType;
+        const body:Record<string,unknown>={textQuery:[searchTerm||category,location].filter(Boolean).join(" "),languageCode:"it",regionCode:"IT",pageSize:20};
+        const includedType=searchTerm?undefined:typeMap[category];if(includedType)body.includedType=includedType;
         if(pageToken)body.pageToken=pageToken;
         const minRating=Number(input.filters?.minRating??0);if(minRating>0)body.minRating=Math.max(0,Math.min(5,minRating));
         const res=await fetch("https://places.googleapis.com/v1/places:searchText",{method:"POST",headers:{"content-type":"application/json","X-Goog-Api-Key":key,"X-Goog-FieldMask":"places.displayName,places.formattedAddress,places.websiteUri,places.nationalPhoneNumber,places.rating,places.userRatingCount,places.googleMapsUri,places.id,nextPageToken"},body:JSON.stringify(body)});
@@ -24,7 +25,7 @@ export class GooglePlacesProvider implements LeadProvider{
         for(const place of data.places??[]){
           const name=place.displayName?.text;if(!name)continue;
           const identity=String(place.id??(name+"|"+(place.formattedAddress??""))).toLowerCase();if(seen.has(identity))continue;seen.add(identity);
-          out.push({name,category,address:place.formattedAddress,city:input.city,province:input.province,region:input.region,cap:input.cap,website:place.websiteUri,phone:place.nationalPhoneNumber,sourceUrl:place.googleMapsUri,rating:place.rating,reviewCount:place.userRatingCount,provider:this.name});
+          out.push({name,category:searchTerm||category,address:place.formattedAddress,city:input.city,province:input.province,region:input.region,cap:input.cap,website:place.websiteUri,phone:place.nationalPhoneNumber,sourceUrl:place.googleMapsUri,rating:place.rating,reviewCount:place.userRatingCount,provider:this.name});
         }
         pageToken=data.nextPageToken;if(!pageToken)break;await sleep(1500);
       }
