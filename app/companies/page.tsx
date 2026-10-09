@@ -20,3 +20,4 @@ export default function CompaniesPage(){
  <div className="mt-4 flex items-center justify-between text-sm"><span>Pagina {page} · {total} risultati</span><div className="flex gap-2"><button disabled={page<=1} onClick={()=>setPage(p=>p-1)} className="rounded border bg-white px-3 py-2 disabled:opacity-40">Precedente</button><button disabled={page*25>=total} onClick={()=>setPage(p=>p+1)} className="rounded border bg-white px-3 py-2 disabled:opacity-40">Successiva</button></div></div>
  </div></main></>
 );
+}
