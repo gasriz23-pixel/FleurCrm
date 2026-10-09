@@ -39,3 +39,4 @@ export default function LeadsPage() {
     </div>}</section>
   </div></main></>
 );
+}
