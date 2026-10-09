@@ -3,7 +3,8 @@ import crypto from "node:crypto";
 import { db } from "./db";
 
 const COOKIE = "fleur_session";
-const TTL_SECONDS = 60 * 60 * 24 * 7;
+const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
+const REMEMBERED_SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
 
 function sign(value: string) {
   const secret = process.env.AUTH_SECRET;
@@ -23,7 +24,7 @@ export function verifyPassword(password: string, stored: string) {
     if (!secret) throw new Error("AUTH_SECRET non configurato");
     const actual = crypto.scryptSync(password, secret, 64);
     const expected = Buffer.from(stored, "hex");
-    return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
+    return expected.length === actual.length && crypto.timingSafeEqual(actual, expected);
   }
 
   const [, saltHex, hashHex] = stored.split("$");
@@ -31,18 +32,19 @@ export function verifyPassword(password: string, stored: string) {
   const salt = Buffer.from(saltHex, "hex");
   const expected = Buffer.from(hashHex, "hex");
   const actual = crypto.scryptSync(password, salt, expected.length);
-  return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
+  return expected.length === actual.length && crypto.timingSafeEqual(actual, expected);
 }
 
-export async function createSession(userId: string) {
-  const value = `${userId}.${Date.now() + TTL_SECONDS * 1000}`;
+export async function createSession(userId: string, rememberDevice = false) {
+  const ttlSeconds = rememberDevice ? REMEMBERED_SESSION_TTL_SECONDS : SESSION_TTL_SECONDS;
+  const value = `${userId}.${Date.now() + ttlSeconds * 1000}`;
   const token = `${value}.${sign(value)}`;
   (await cookies()).set(COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: TTL_SECONDS,
+    maxAge: ttlSeconds,
   });
 }
 
