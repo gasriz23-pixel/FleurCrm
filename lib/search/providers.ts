@@ -20,7 +20,9 @@ export class ProviderRegistry{
     const regionInputs=regions.map(region=>({...expanded,region,city:undefined}));
     const inputs:LeadSearchInput[]=[...cityInputs,...regionInputs];
     if(!inputs.length)inputs.push(expanded);
-    const tasks=inputs.flatMap(location=>this.providers.map(p=>({location,p})));
+    const searchTerm=String(filters.searchTerm??"").trim();
+    const activeProviders=searchTerm?this.providers.filter(p=>p.name==="google-places"||p.name==="google-web-search"):this.providers;
+    const tasks=inputs.flatMap(location=>activeProviders.map(p=>({location,p})));
     const results:LeadCandidate[][]=[];
     const concurrency=Math.max(1,Math.min(3,Number(filters.providerConcurrency??3)));
     let cursor=0;
