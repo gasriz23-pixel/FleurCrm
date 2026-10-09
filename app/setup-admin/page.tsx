@@ -29,7 +29,7 @@ export default function SetupAdminPage() {
         body: JSON.stringify({ token, password }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) { setError(data.error ?? "Impossibile configurare l&apos;account."); setBusy(false); return; }
+      if (!res.ok) { setError(data.error ?? "Impossibile configurare l'account."); setBusy(false); return; }
       router.push("/login?setup=success");
     } catch {
       setError("Impossibile raggiungere il servizio. Riprova.");
