@@ -23,6 +23,7 @@ const searchSchema = z.object({
     minRating: z.number().finite().min(0).max(5).optional(),
     minCapacity: z.number().finite().int().min(0).max(100000).optional(),
     allItaly: z.boolean().default(false),
+    searchTerm: text.optional(),
   }).default({
     cities: [],
     regions: [],
