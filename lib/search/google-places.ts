@@ -7,7 +7,7 @@ function locations(input:LeadSearchInput){const values=[input.city,input.cap,inp
 export class GooglePlacesProvider implements LeadProvider{
   name="google-places";
   async search(input:LeadSearchInput):Promise<LeadCandidate[]>{
-    const key=process.env.GOOGLE_MAPS_API_KEY??process.env.GOOGLE_PLACES_API_KEY;if(!key)return [];
+    const key=process.env.GOOGLE_MAPS_API_KEY||process.env.GOOGLE_PLACES_API_KEY;if(!key)return [];
     const searchTerm=String(input.filters?.searchTerm??"").trim();
     const categories=input.categories?.length?input.categories:Object.keys(typeMap);
     const out:LeadCandidate[]=[];const seen=new Set<string>();
